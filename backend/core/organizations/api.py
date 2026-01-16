@@ -4,6 +4,13 @@ Endpoints:
 - POST /organizations - Create a new organization
 - GET /organizations/:id - Get organization details with member list
 - PATCH /organizations/:id - Update organization name/settings
+- DELETE /organizations/:id - Delete an organization (owner only)
+
+Role-based access control:
+- viewer: Can view organization details
+- member: Can view organization details
+- admin: Can update organization name/settings
+- owner: Full control including deletion and billing
 """
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -18,6 +25,12 @@ from core.api_models.organizations import (
     OrganizationsListResponse,
 )
 from core.organizations import repo as org_repo
+from core.organizations.rbac import (
+    OrgAccessContext,
+    require_org_owner,
+    require_org_admin,
+    require_org_viewer,
+)
 
 
 router = APIRouter(tags=["organizations"])
@@ -65,21 +78,16 @@ async def create_organization(
 @router.get("/organizations/{org_id}", response_model=OrganizationResponse, summary="Get Organization", operation_id="get_organization")
 async def get_organization(
     org_id: str,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    ctx: OrgAccessContext = Depends(require_org_viewer)
 ):
     """
     Get organization details with member list.
 
-    Only organization members can view the organization.
+    Requires: viewer role or higher (any organization member)
     """
-    logger.debug(f"Fetching organization {org_id} for user {user_id}")
+    logger.debug(f"Fetching organization {org_id} for user {ctx.user_id}")
 
     try:
-        # Check if user is a member
-        is_member = await org_repo.is_org_member(user_id, org_id)
-        if not is_member:
-            raise HTTPException(status_code=403, detail="Access denied")
-
         # Get the organization
         org = await org_repo.get_organization_by_id(org_id)
         if not org:
@@ -114,21 +122,16 @@ async def get_organization(
 async def update_organization(
     org_id: str,
     org_data: OrganizationUpdateRequest,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    ctx: OrgAccessContext = Depends(require_org_admin)
 ):
     """
     Update organization name/settings.
 
-    Only owners and admins can update the organization.
+    Requires: admin role or higher
     """
-    logger.debug(f"Updating organization {org_id} by user {user_id}")
+    logger.debug(f"Updating organization {org_id} by user {ctx.user_id}")
 
     try:
-        # Check if user has permission (owner or admin)
-        has_permission = await org_repo.has_org_permission(user_id, org_id, "admin")
-        if not has_permission:
-            raise HTTPException(status_code=403, detail="Access denied")
-
         # Check if organization exists
         org = await org_repo.get_organization_by_id(org_id)
         if not org:
@@ -150,7 +153,7 @@ async def update_organization(
         if not updated_org:
             raise HTTPException(status_code=500, detail="Failed to update organization")
 
-        logger.info(f"Organization {org_id} updated by user {user_id}")
+        logger.info(f"Organization {org_id} updated by user {ctx.user_id}")
 
         return OrganizationResponse(**updated_org)
 

@@ -131,3 +131,74 @@
   - Use execute_one_read for read operations (supports read replicas)
   - Use execute_one with commit=True for writes
 ---
+
+## Iteration 6 - US-003: Team member invitation system
+- What was implemented:
+  - Database migration 20260116220200_organization_invitations.sql:
+    - Created invitation_status enum (pending, accepted, expired, revoked)
+    - Created organization_invitations table with token, email, role, status, expires_at
+    - Added RLS policies for invitation management
+    - Added SQL helper functions: create_org_invitation, accept_org_invitation, revoke_org_invitation, get_org_invitations, get_invitation_by_token, expire_old_invitations
+  - Pydantic API models (backend/core/api_models/invitations.py):
+    - InvitationStatus enum
+    - InvitationCreateRequest, InvitationResponse, InvitationsListResponse
+    - InvitationPublicResponse, AcceptInvitationResponse
+  - Repository functions (backend/core/organizations/invitations_repo.py):
+    - create_invitation, get_invitation_by_id, get_invitation_by_token
+    - get_organization_invitations, get_pending_invitations_for_email
+    - update_invitation_status, accept_invitation, check_existing_member
+    - get_user_email, expire_old_invitations
+  - API endpoints (backend/core/organizations/invitations_api.py):
+    - POST /v1/organizations/{org_id}/invitations - create invitation
+    - GET /v1/organizations/{org_id}/invitations - list invitations
+    - GET /v1/invitations/{token} - get invitation details (public)
+    - POST /v1/invitations/{token}/accept - accept invitation
+    - DELETE /v1/organizations/{org_id}/invitations/{invitation_id} - revoke
+  - Registered invitations_router in backend/api.py
+- Files changed:
+  - backend/supabase/migrations/20260116220200_organization_invitations.sql (new)
+  - backend/core/api_models/invitations.py (new)
+  - backend/core/api_models/__init__.py (modified - exports invitation models)
+  - backend/core/organizations/invitations_repo.py (new)
+  - backend/core/organizations/invitations_api.py (new)
+  - backend/core/organizations/__init__.py (modified - exports invitations_repo)
+  - backend/api.py (modified - includes invitations_router)
+  - PRD.md (marked US-003 as complete)
+- Learnings for future iterations:
+  - Invitations use unique tokens (secrets.token_urlsafe) for accept/decline links
+  - Invitations expire after 7 days by default
+  - Public endpoint allows viewing invitation details before login
+  - Email matching is case-insensitive (LOWER())
+  - Existing pending invitations are expired when new one is created for same email/org
+  - TODO: Email sending not implemented yet - will need email service integration
+---
+
+## Iteration 7 - US-004: Role-based access control (RBAC)
+- What was implemented:
+  - Created backend/core/organizations/rbac.py with comprehensive RBAC system:
+    - OrganizationRole enum: owner, admin, member, viewer
+    - Permission enum with fine-grained permissions (21 total)
+    - ROLE_PERMISSIONS mapping defines what each role can do
+    - ROLE_HIERARCHY for permission level comparisons
+    - OrgAccessContext dataclass returned by auth dependencies
+    - FastAPI dependencies: require_org_owner, require_org_admin, require_org_member, require_org_viewer
+    - require_org_permission() factory for specific permission checks
+  - Updated backend/core/organizations/__init__.py to export RBAC components
+  - Updated backend/core/organizations/api.py to use RBAC dependencies instead of inline checks
+  - Updated backend/core/organizations/invitations_api.py to use RBAC dependencies
+  - Role permissions are now enforced via middleware (FastAPI dependencies)
+- Files changed:
+  - backend/core/organizations/rbac.py (new)
+  - backend/core/organizations/__init__.py (modified - exports RBAC components)
+  - backend/core/organizations/api.py (modified - uses RBAC dependencies)
+  - backend/core/organizations/invitations_api.py (modified - uses RBAC dependencies)
+  - PRD.md (marked US-004 as complete)
+- Learnings for future iterations:
+  - Use OrgAccessContext from RBAC dependencies to get user_id, org_id, and role
+  - Role hierarchy: owner (4) > admin (3) > member (2) > viewer (1)
+  - require_org_admin includes owners; require_org_member includes admins and owners
+  - For specific permission checks use require_org_permission(Permission.BILLING_MANAGE)
+  - Admins have all permissions except: ORG_DELETE, BILLING_MANAGE
+  - Members can create/manage own resources but cannot manage others' resources
+  - Viewers are read-only (5 permissions: view org, members, agents, threads, settings)
+---

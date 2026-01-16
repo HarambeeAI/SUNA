@@ -53,13 +53,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform engineer, I need RBAC implementation so organizations can control member permissions.
 
 **Acceptance Criteria:**
-- [ ] Define roles: owner, admin, member, viewer
-- [ ] Owner: full control including billing and deletion
-- [ ] Admin: manage members, agents, settings (no billing)
-- [ ] Member: create and manage own agents, view shared agents
-- [ ] Viewer: read-only access to organization agents
-- [ ] Middleware enforces role permissions on all org endpoints
-- [ ] Typecheck passes
+- [x] Define roles: owner, admin, member, viewer
+- [x] Owner: full control including billing and deletion
+- [x] Admin: manage members, agents, settings (no billing)
+- [x] Member: create and manage own agents, view shared agents
+- [x] Viewer: read-only access to organization agents
+- [x] Middleware enforces role permissions on all org endpoints
+- [x] Typecheck passes
 
 ### US-005: Organization context in authentication
 **Description:** As a backend developer, I need to include organization context in auth tokens so all requests are properly scoped.

@@ -6,6 +6,12 @@ Endpoints:
 - POST /invitations/:token/accept - Accept an invitation
 - GET /invitations/:token - Get invitation details (public)
 - DELETE /organizations/:id/invitations/:invitation_id - Revoke an invitation
+
+Role-based access control:
+- viewer: Can view invitations
+- member: Can view invitations
+- admin: Can create invitations (member/viewer roles), revoke invitations
+- owner: Can create invitations (any role), revoke invitations
 """
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -21,6 +27,12 @@ from core.api_models.invitations import (
 )
 from core.organizations import repo as org_repo
 from core.organizations import invitations_repo
+from core.organizations.rbac import (
+    OrgAccessContext,
+    OrganizationRole,
+    require_org_admin,
+    require_org_viewer,
+)
 
 
 router = APIRouter(tags=["invitations"])
@@ -35,25 +47,19 @@ router = APIRouter(tags=["invitations"])
 async def create_invitation(
     org_id: str,
     invitation_data: InvitationCreateRequest,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    ctx: OrgAccessContext = Depends(require_org_admin)
 ):
     """
     Create and send an organization invitation.
 
-    Only organization owners and admins can send invitations.
-    Admins cannot invite users as owner or admin.
+    Requires: admin role or higher
+    Note: Admins cannot invite users as owner or admin.
     """
-    logger.debug(f"Creating invitation to {invitation_data.email} for org {org_id} by user {user_id}")
+    logger.debug(f"Creating invitation to {invitation_data.email} for org {org_id} by user {ctx.user_id}")
 
     try:
-        # Check if user has permission (owner or admin)
-        has_permission = await org_repo.has_org_permission(user_id, org_id, "admin")
-        if not has_permission:
-            raise HTTPException(status_code=403, detail="Only owners and admins can send invitations")
-
-        # Get user's role to check if admin is trying to invite as owner/admin
-        user_role = await org_repo.get_user_role_in_org(user_id, org_id)
-        if user_role == "admin" and invitation_data.role.value in ["owner", "admin"]:
+        # Admins cannot invite users as owner or admin (only owners can)
+        if ctx.role == OrganizationRole.ADMIN and invitation_data.role.value in ["owner", "admin"]:
             raise HTTPException(
                 status_code=403,
                 detail="Admins cannot invite users as owner or admin"
@@ -79,7 +85,7 @@ async def create_invitation(
             org_id=org_id,
             email=invitation_data.email,
             role=invitation_data.role.value,
-            invited_by_user_id=user_id,
+            invited_by_user_id=ctx.user_id,
         )
 
         if not invitation:
@@ -109,21 +115,16 @@ async def create_invitation(
 )
 async def list_organization_invitations(
     org_id: str,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    ctx: OrgAccessContext = Depends(require_org_viewer)
 ):
     """
     List all invitations for an organization.
 
-    Only organization members can view invitations.
+    Requires: viewer role or higher (any organization member)
     """
-    logger.debug(f"Listing invitations for org {org_id} by user {user_id}")
+    logger.debug(f"Listing invitations for org {org_id} by user {ctx.user_id}")
 
     try:
-        # Check if user is a member
-        is_member = await org_repo.is_org_member(user_id, org_id)
-        if not is_member:
-            raise HTTPException(status_code=403, detail="Access denied")
-
         # Get invitations
         invitations = await invitations_repo.get_organization_invitations(org_id)
 
@@ -282,24 +283,16 @@ async def accept_invitation(
 async def revoke_invitation(
     org_id: str,
     invitation_id: str,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    ctx: OrgAccessContext = Depends(require_org_admin)
 ):
     """
     Revoke a pending invitation.
 
-    Only organization owners and admins can revoke invitations.
+    Requires: admin role or higher
     """
-    logger.debug(f"Revoking invitation {invitation_id} in org {org_id} by user {user_id}")
+    logger.debug(f"Revoking invitation {invitation_id} in org {org_id} by user {ctx.user_id}")
 
     try:
-        # Check if user has permission (owner or admin)
-        has_permission = await org_repo.has_org_permission(user_id, org_id, "admin")
-        if not has_permission:
-            raise HTTPException(
-                status_code=403,
-                detail="Only owners and admins can revoke invitations"
-            )
-
         # Get the invitation
         invitation = await invitations_repo.get_invitation_by_id(invitation_id)
 
@@ -320,7 +313,7 @@ async def revoke_invitation(
         # Revoke the invitation
         await invitations_repo.update_invitation_status(invitation_id, 'revoked')
 
-        logger.info(f"Invitation {invitation_id} revoked by user {user_id}")
+        logger.info(f"Invitation {invitation_id} revoked by user {ctx.user_id}")
 
         return {"message": "Invitation revoked successfully"}
 
