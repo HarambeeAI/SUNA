@@ -649,6 +649,78 @@ export interface UpdateOrganizationMemberRoleRequest {
 }
 
 // ============================================================================
+// Agent Templates & Categories
+// ============================================================================
+
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentTemplateConfig {
+  system_prompt: string;
+  tools: {
+    agentpress: Record<string, any>;
+    mcp: any[];
+    custom_mcp: any[];
+  };
+  metadata: {
+    avatar?: string;
+    avatar_color?: string;
+    template_metadata?: Record<string, any>;
+  };
+}
+
+export interface AgentTemplate {
+  template_id: string;
+  creator_id: string;
+  name: string;
+  description?: string;
+  config: AgentTemplateConfig;
+  tags: string[];
+  category_id?: string;
+  category?: TemplateCategory;
+  is_public: boolean;
+  is_kortix_team: boolean;
+  download_count: number;
+  template_version: number;
+  version_notes?: string;
+  marketplace_published_at?: string;
+  usage_examples?: any[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentTemplateWithCategory extends AgentTemplate {
+  category_name?: string;
+  category_slug?: string;
+}
+
+export interface TemplateCategoriesResponse {
+  categories: TemplateCategory[];
+}
+
+export interface AgentTemplatesResponse {
+  templates: AgentTemplate[];
+  pagination: PaginationInfo;
+}
+
+export interface AgentTemplatesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  tags?: string[];
+}
+
+// ============================================================================
 // Error Types
 // ============================================================================
 

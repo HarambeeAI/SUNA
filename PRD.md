@@ -145,11 +145,11 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform engineer, I need to store agent templates so users can quickly deploy pre-configured agents.
 
 **Acceptance Criteria:**
-- [ ] Add `agent_templates` table: id, name, description, category, system_prompt, tools_config, is_public, created_by
-- [ ] Add `template_categories` table: id, name, slug, icon, sort_order
-- [ ] Seed initial categories: Customer Service, Sales, Research, Content Creation, Data Analysis
-- [ ] Template versioning: store template_version for future updates
-- [ ] Typecheck passes
+- [x] Add `agent_templates` table: id, name, description, category, system_prompt, tools_config, is_public, created_by
+- [x] Add `template_categories` table: id, name, slug, icon, sort_order
+- [x] Seed initial categories: Customer Service, Sales, Research, Content Creation, Data Analysis
+- [x] Template versioning: store template_version for future updates
+- [x] Typecheck passes
 
 ### US-013: Agent template creation API
 **Description:** As a backend developer, I need API endpoints for template management so we can build the marketplace.
