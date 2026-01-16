@@ -33,6 +33,20 @@ export interface OrganizationWithRole extends Organization {
   role: 'owner' | 'member';
 }
 
+// Organization member roles (more granular than basejump)
+export type OrganizationRole = 'owner' | 'admin' | 'member' | 'viewer';
+
+export interface OrganizationMember {
+  id: string;
+  org_id: string;
+  user_id: string;
+  role: OrganizationRole;
+  invited_by: string | null;
+  joined_at: string;
+  email?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface CreateOrganizationRequest {
   name: string;
   slug: string;
@@ -188,5 +202,117 @@ export const deleteOrganization = async (orgId: string): Promise<void> => {
       resource: `organization ${orgId}`
     });
     throw new Error(response.error.message || 'Failed to delete organization');
+  }
+};
+
+// ============================================================================
+// Organization Members API Functions
+// ============================================================================
+
+export interface AddMemberRequest {
+  user_id: string;
+  role?: OrganizationRole;
+}
+
+export interface UpdateMemberRoleRequest {
+  role: OrganizationRole;
+}
+
+/**
+ * Get all members of an organization
+ */
+export const getOrganizationMembers = async (orgId: string): Promise<OrganizationMember[]> => {
+  try {
+    const response = await backendApi.get<OrganizationMember[]>(`/v1/organizations/${orgId}/members`, {
+      showErrors: false,
+    });
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load organization members',
+        resource: `organization ${orgId} members`
+      });
+      return [];
+    }
+
+    return response.data || [];
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load organization members',
+      resource: `organization ${orgId} members`
+    });
+    return [];
+  }
+};
+
+/**
+ * Add a member to an organization
+ */
+export const addOrganizationMember = async (
+  orgId: string,
+  data: AddMemberRequest
+): Promise<OrganizationMember> => {
+  const response = await backendApi.post<OrganizationMember>(
+    `/v1/organizations/${orgId}/members`,
+    data,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'add organization member',
+      resource: `organization ${orgId}`
+    });
+    throw new Error(response.error.message || 'Failed to add member');
+  }
+
+  if (!response.data) {
+    throw new Error('Failed to add member');
+  }
+
+  return response.data;
+};
+
+/**
+ * Update a member's role in an organization
+ */
+export const updateOrganizationMemberRole = async (
+  orgId: string,
+  userId: string,
+  data: UpdateMemberRoleRequest
+): Promise<void> => {
+  const response = await backendApi.patch(
+    `/v1/organizations/${orgId}/members/${userId}`,
+    data,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'update member role',
+      resource: `organization ${orgId} member ${userId}`
+    });
+    throw new Error(response.error.message || 'Failed to update member role');
+  }
+};
+
+/**
+ * Remove a member from an organization
+ */
+export const removeOrganizationMember = async (
+  orgId: string,
+  userId: string
+): Promise<void> => {
+  const response = await backendApi.delete(
+    `/v1/organizations/${orgId}/members/${userId}`,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'remove organization member',
+      resource: `organization ${orgId} member ${userId}`
+    });
+    throw new Error(response.error.message || 'Failed to remove member');
   }
 };

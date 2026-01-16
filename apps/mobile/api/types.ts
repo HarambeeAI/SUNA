@@ -621,6 +621,29 @@ export interface OrganizationsResponse {
   organizations: OrganizationWithRole[];
 }
 
+// Organization member roles (more granular than basejump)
+export type OrganizationRole = 'owner' | 'admin' | 'member' | 'viewer';
+
+export interface OrganizationMember {
+  id: string;
+  org_id: string;
+  user_id: string;
+  role: OrganizationRole;
+  invited_by: string | null;
+  joined_at: string;
+  email?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface AddOrganizationMemberRequest {
+  user_id: string;
+  role?: OrganizationRole;
+}
+
+export interface UpdateOrganizationMemberRoleRequest {
+  role: OrganizationRole;
+}
+
 // ============================================================================
 // Error Types
 // ============================================================================

@@ -8,7 +8,10 @@
 - Use BEGIN/COMMIT for transactional migrations
 - RLS policies use basejump.has_role_on_account() for permission checks
 - TypeScript types defined in apps/mobile/api/types.ts and individual files in apps/frontend/src/lib/api/
-- pnpm is required but not installed - cannot run lint/typecheck without it
+- pnpm is required but not installed - use `npx pnpm install` to install deps, then `npx pnpm run lint`
+- organization_role enum extends basejump's basic owner/member with: owner, admin, member, viewer
+- Use public.has_org_role() and public.has_org_permission() for organization-level permission checks
+- organization_members table tracks membership with additional metadata beyond basejump.account_user
 
 ---
 
@@ -30,4 +33,26 @@
   - Organizations table links to basejump.accounts via account_id FK
   - Basejump already has billing_subscriptions table - organizations extends this with plan_tier
   - RLS patterns: use basejump.has_role_on_account() with optional role parameter
+---
+
+## Iteration 2 - US-001: Add organization_members table (second AC)
+- What was implemented:
+  - Created SQL migration 20260116220000_organization_members_table.sql
+  - Added organization_members table with fields: id, org_id, user_id, role, invited_by, joined_at, metadata
+  - Created organization_role enum (owner, admin, member, viewer) for granular RBAC
+  - Added RLS policies for CRUD operations with role-based restrictions
+  - Added helper functions: has_org_role, has_org_permission, get_org_role, add_org_member, get_org_members, update_org_member_role, remove_org_member
+  - Updated create_organization to also add creator as owner in organization_members
+  - Added TypeScript types: OrganizationRole, OrganizationMember, AddOrganizationMemberRequest, UpdateOrganizationMemberRoleRequest
+  - Added API functions: getOrganizationMembers, addOrganizationMember, updateOrganizationMemberRole, removeOrganizationMember
+- Files changed:
+  - backend/supabase/migrations/20260116220000_organization_members_table.sql (new)
+  - apps/mobile/api/types.ts (modified - added OrganizationMember types)
+  - apps/frontend/src/lib/api/organizations.ts (modified - added member management types and API functions)
+  - PRD.md (marked second AC as complete)
+- Learnings for future iterations:
+  - organization_members provides more granular roles than basejump's basic owner/member
+  - Use has_org_permission() for hierarchical permission checks (owner > admin > member > viewer)
+  - Self-removal (leave org) is allowed except for last owner
+  - Admins can manage members/viewers but not owners/other admins
 ---
