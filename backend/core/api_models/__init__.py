@@ -45,6 +45,15 @@ from .organizations import (
     OrganizationsListResponse,
 )
 
+from .invitations import (
+    InvitationStatus,
+    InvitationCreateRequest,
+    InvitationResponse,
+    InvitationsListResponse,
+    InvitationPublicResponse,
+    AcceptInvitationResponse,
+)
+
 
 __all__ = [
     # Agent models
@@ -82,4 +91,12 @@ __all__ = [
     "OrganizationMemberResponse",
     "OrganizationResponse",
     "OrganizationsListResponse",
+
+    # Invitation models
+    "InvitationStatus",
+    "InvitationCreateRequest",
+    "InvitationResponse",
+    "InvitationsListResponse",
+    "InvitationPublicResponse",
+    "AcceptInvitationResponse",
 ]

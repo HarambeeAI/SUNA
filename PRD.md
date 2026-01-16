@@ -42,12 +42,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization admin, I want to invite team members to my workspace so we can collaborate on agents.
 
 **Acceptance Criteria:**
-- [ ] POST `/v1/organizations/:id/invitations` endpoint sends email invitation
-- [ ] Invitation email contains unique token and accept/decline links
-- [ ] POST `/v1/invitations/:token/accept` adds user to organization
-- [ ] Invitations expire after 7 days
-- [ ] Track invitation status: pending, accepted, expired, revoked
-- [ ] Typecheck passes
+- [x] POST `/v1/organizations/:id/invitations` endpoint sends email invitation
+- [x] Invitation email contains unique token and accept/decline links
+- [x] POST `/v1/invitations/:token/accept` adds user to organization
+- [x] Invitations expire after 7 days
+- [x] Track invitation status: pending, accepted, expired, revoked
+- [x] Typecheck passes
 
 ### US-004: Role-based access control (RBAC)
 **Description:** As a platform engineer, I need RBAC implementation so organizations can control member permissions.
