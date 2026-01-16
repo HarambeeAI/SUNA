@@ -1,0 +1,33 @@
+# Progress Log
+
+## Learnings
+(Patterns discovered during implementation)
+
+- Database uses Basejump for account management (basejump.accounts, basejump.account_user)
+- Migrations are SQL files in backend/supabase/migrations/ with timestamp naming (YYYYMMDDHHMMSS_description.sql)
+- Use BEGIN/COMMIT for transactional migrations
+- RLS policies use basejump.has_role_on_account() for permission checks
+- TypeScript types defined in apps/mobile/api/types.ts and individual files in apps/frontend/src/lib/api/
+- pnpm is required but not installed - cannot run lint/typecheck without it
+
+---
+
+## Iteration 1 - US-001: Add organizations table (first AC)
+- What was implemented:
+  - Created SQL migration 20260116215926_organizations_table.sql
+  - Added organizations table with fields: id, name, slug, plan_tier, billing_status, account_id, stripe_customer_id, stripe_subscription_id, settings, created_at, updated_at
+  - Created plan_tier enum (free, pro, enterprise)
+  - Created billing_status enum (active, past_due, canceled, trialing, unpaid)
+  - Added RLS policies for CRUD operations
+  - Added helper functions: create_organization, get_organization, get_organization_by_slug, get_user_organizations
+  - Added TypeScript types to apps/mobile/api/types.ts
+  - Created apps/frontend/src/lib/api/organizations.ts with types and API functions
+- Files changed:
+  - backend/supabase/migrations/20260116215926_organizations_table.sql (new)
+  - apps/mobile/api/types.ts (modified - added Organization types)
+  - apps/frontend/src/lib/api/organizations.ts (new)
+- Learnings for future iterations:
+  - Organizations table links to basejump.accounts via account_id FK
+  - Basejump already has billing_subscriptions table - organizations extends this with plan_tier
+  - RLS patterns: use basejump.has_role_on_account() with optional role parameter
+---

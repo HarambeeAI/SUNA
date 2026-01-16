@@ -581,6 +581,47 @@ export interface ThreadsResponse {
 }
 
 // ============================================================================
+// Organizations (Multi-tenant)
+// ============================================================================
+
+export type PlanTier = 'free' | 'pro' | 'enterprise';
+
+export type BillingStatus = 'active' | 'past_due' | 'canceled' | 'trialing' | 'unpaid';
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  plan_tier: PlanTier;
+  billing_status: BillingStatus;
+  account_id: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  settings: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationWithRole extends Organization {
+  role: 'owner' | 'member';
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+  slug: string;
+  plan_tier?: PlanTier;
+}
+
+export interface UpdateOrganizationRequest {
+  name?: string;
+  settings?: Record<string, any>;
+}
+
+export interface OrganizationsResponse {
+  organizations: OrganizationWithRole[];
+}
+
+// ============================================================================
 // Error Types
 // ============================================================================
 
