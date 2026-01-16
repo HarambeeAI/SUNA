@@ -249,3 +249,83 @@
   - Personal workspace uses account_id with org_id IS NULL filter
   - The org context is automatically bound to structlog for request tracking
 ---
+
+## Iteration 9 - US-006: Freemium plan tier schema
+- What was implemented:
+  - Database migration 20260117100000_plan_tiers_and_usage.sql:
+    - Created plan_tiers table with: id, tier_name, display_name, monthly_price_cents, agent_limit, run_limit_monthly, features_json, is_active, sort_order
+    - Seeded three tiers: Free (0, 3 agents, 100 runs), Pro ($49, unlimited agents, 5000 runs), Enterprise (custom)
+    - Created organization_usage table for tracking: org_id, period_start, period_end, agents_created, runs_executed, total_tokens_used, estimated_cost_cents
+    - Added RLS policies for both tables
+    - Created helper functions: get_current_billing_period, get_or_create_org_usage, increment_org_agent_count, increment_org_run_count, get_org_usage_with_limits, get_plan_tier, get_all_plan_tiers
+    - Created reset_monthly_usage_counters function for pg_cron
+    - Scheduled monthly reset cron job (runs at 00:01 UTC on the 1st of each month)
+  - Pydantic API models (backend/core/api_models/plan_tiers.py):
+    - PlanTierFeatures, PlanTierResponse, PlanTiersListResponse
+    - UsagePercentages, UsageLimits, OrganizationUsageResponse
+    - UsageRecordResponse, UsageHistoryResponse
+  - TypeScript types (apps/frontend/src/lib/api/organizations.ts):
+    - PlanTierFeatures, PlanTierInfo, UsageLimits, UsagePercentages
+    - OrganizationUsage, UsageRecord
+    - API functions: getPlanTiers, getPlanTier, getOrganizationUsage, getOrganizationUsageHistory
+  - Updated backend/core/api_models/__init__.py to export plan tier models
+- Files changed:
+  - backend/supabase/migrations/20260117100000_plan_tiers_and_usage.sql (new)
+  - backend/core/api_models/plan_tiers.py (new)
+  - backend/core/api_models/__init__.py (modified - exports plan tier models)
+  - apps/frontend/src/lib/api/organizations.ts (modified - added plan tier and usage types/functions)
+  - PRD.md (marked US-006 as complete)
+- Learnings for future iterations:
+  - Plan tiers use existing plan_tier enum from organizations table
+  - Usage is tracked per billing period (monthly) with org_id + period_start as unique constraint
+  - pg_cron extension used for monthly reset (schedule: '1 0 1 * *')
+  - Features stored as JSONB for flexibility (support_level, api_access, sso, etc.)
+  - monthly_price_cents stored in cents (4900 = $49.00), NULL for custom pricing
+  - agent_limit/run_limit_monthly NULL means unlimited
+  - Helper functions for incrementing usage return new count for limit checking
+---
+
+## Iteration 10 - US-007: Usage limit enforcement
+- What was implemented:
+  - Created backend/core/organizations/usage_limits.py:
+    - check_org_agent_limit: checks agent creation against plan limit, returns can_create bool and 402 error response
+    - check_org_run_limit: checks monthly runs against plan limit, returns can_run bool and 402 error response
+    - increment_org_agent_usage: increments agent count after creation
+    - increment_org_run_usage: increments run count with optional tokens/cost tracking
+    - _build_limit_error: builds standardized 402 error response with upgrade CTA
+    - _log_limit_hit: logs limit hits for analytics/conversion tracking
+    - Error codes: ORG_AGENT_LIMIT_EXCEEDED, ORG_RUN_LIMIT_MONTHLY_EXCEEDED
+  - Updated backend/core/organizations/__init__.py to export usage limit functions
+  - Updated backend/core/agents/agent_crud.py (create_agent endpoint):
+    - Gets active org context via auth_context_repo
+    - Checks org agent limit when in org context (402 if exceeded)
+    - Falls back to existing account-based limits for personal workspace
+    - Increments org agent usage after successful creation
+    - Passes org_id to repo.create_agent for org association
+  - Updated backend/core/agents/repo.py (create_agent function):
+    - Added org_id parameter (optional) for organization association
+  - Updated backend/core/agents/api.py:
+    - _check_billing_and_limits: added org_id parameter and check_org_runs parallel task
+    - start_agent_run: added org_id parameter, passes to _check_billing_and_limits
+    - Increments org run usage after successful agent run creation
+    - unified_agent_start: gets org context and passes org_id to start_agent_run
+  - 402 Payment Required response includes:
+    - error_code: specific error type
+    - message: human-readable message with plan name
+    - current_count/limit: usage stats
+    - upgrade_cta: { text, url, description } for frontend upgrade UI
+- Files changed:
+  - backend/core/organizations/usage_limits.py (new)
+  - backend/core/organizations/__init__.py (modified - exports usage limit functions)
+  - backend/core/agents/agent_crud.py (modified - org limit checks on create)
+  - backend/core/agents/repo.py (modified - added org_id to create_agent)
+  - backend/core/agents/api.py (modified - org limit checks on run start)
+  - PRD.md (marked US-007 as complete)
+- Learnings for future iterations:
+  - Usage limits are enforced at two layers: org-level (monthly quotas) and account-level (concurrent runs)
+  - Use auth_context_repo.get_user_active_org_id(user_id) to get active org context
+  - org_id is None for personal workspace, so fall back to account-based limits
+  - Limit checks fail-open on errors to not block users unexpectedly
+  - Analytics logging includes: org_id, limit_type, plan_tier, current_count, limit, usage_percent
+  - Upgrade CTA URL pattern: /settings/billing?org={org_id}
+---

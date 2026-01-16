@@ -177,22 +177,23 @@ async def create_agent(
     icon_background: str = "#F3F4F6",
     is_default: bool = False,
     description: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    org_id: Optional[str] = None
 ) -> Dict[str, Any]:
     sql = """
     INSERT INTO agents (
         account_id, name, description, icon_name, icon_color, icon_background,
-        is_default, version_count, metadata, created_at, updated_at
+        is_default, version_count, metadata, org_id, created_at, updated_at
     )
     VALUES (
         :account_id, :name, :description, :icon_name, :icon_color, :icon_background,
-        :is_default, 1, :metadata, :created_at, :updated_at
+        :is_default, 1, :metadata, :org_id, :created_at, :updated_at
     )
     RETURNING *
     """
-    
+
     now = datetime.now(timezone.utc)
-    
+
     result = await execute_one(sql, {
         "account_id": account_id,
         "name": name,
@@ -202,10 +203,11 @@ async def create_agent(
         "icon_background": icon_background,
         "is_default": is_default,
         "metadata": metadata or {},
+        "org_id": org_id,
         "created_at": now,
         "updated_at": now,
     }, commit=True)
-    
+
     return serialize_row(dict(result)) if result else None
 
 

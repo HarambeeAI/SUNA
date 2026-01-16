@@ -557,27 +557,44 @@ async def get_agent(agent_id: str, user_id: str = Depends(verify_and_get_user_id
 
 @router.post("/agents", response_model=AgentResponse, summary="Create Agent", operation_id="create_agent")
 async def create_agent(
+    request: Request,
     agent_data: AgentCreateRequest,
     user_id: str = Depends(verify_and_get_user_id_from_jwt)
 ):
     from core.agents import repo as agents_repo
-    
+    from core.organizations import auth_context_repo, check_org_agent_limit, increment_org_agent_usage
+
     logger.debug(f"Creating new agent for user: {user_id}")
     client = await db.client
-    
-    from core.utils.limits_checker import check_agent_count_limit
-    limit_check = await check_agent_count_limit(user_id)
-    
-    if not limit_check['can_create']:
-        error_detail = {
-            "message": f"Maximum of {limit_check['limit']} agents allowed for your current plan. You have {limit_check['current_count']} agents.",
-            "current_count": limit_check['current_count'],
-            "limit": limit_check['limit'],
-            "tier_name": limit_check['tier_name'],
-            "error_code": "AGENT_LIMIT_EXCEEDED"
-        }
-        logger.warning(f"Agent limit exceeded for account {user_id}: {limit_check['current_count']}/{limit_check['limit']} agents")
-        raise HTTPException(status_code=402, detail=error_detail)
+
+    # Get active organization context
+    org_id = await auth_context_repo.get_user_active_org_id(user_id)
+
+    # Check limits based on context (org vs personal workspace)
+    if org_id:
+        # Organization context: check org plan limits
+        limit_check = await check_org_agent_limit(org_id)
+        if not limit_check['can_create']:
+            logger.warning(
+                f"Org agent limit exceeded: org_id={org_id} "
+                f"usage={limit_check['current_count']}/{limit_check['limit']}"
+            )
+            raise HTTPException(status_code=402, detail=limit_check['error_response'])
+    else:
+        # Personal workspace: use existing account-based limits
+        from core.utils.limits_checker import check_agent_count_limit
+        limit_check = await check_agent_count_limit(user_id)
+
+        if not limit_check['can_create']:
+            error_detail = {
+                "message": f"Maximum of {limit_check['limit']} agents allowed for your current plan. You have {limit_check['current_count']} agents.",
+                "current_count": limit_check['current_count'],
+                "limit": limit_check['limit'],
+                "tier_name": limit_check['tier_name'],
+                "error_code": "AGENT_LIMIT_EXCEEDED"
+            }
+            logger.warning(f"Agent limit exceeded for account {user_id}: {limit_check['current_count']}/{limit_check['limit']} agents")
+            raise HTTPException(status_code=402, detail=error_detail)
     
     try:
         # Clear existing default if setting new default
@@ -587,15 +604,23 @@ async def create_agent(
         if config.ENV_MODE == EnvMode.STAGING:
             print(f"[DEBUG] create_agent: Creating with icon_name={agent_data.icon_name or 'bot'}, icon_color={agent_data.icon_color or '#000000'}, icon_background={agent_data.icon_background or '#F3F4F6'}")
         
-        # Create agent using direct SQL
+        # Create agent using direct SQL (with org_id if in organization context)
         agent = await agents_repo.create_agent(
             account_id=user_id,
             name=agent_data.name,
             icon_name=agent_data.icon_name or "bot",
             icon_color=agent_data.icon_color or "#000000",
             icon_background=agent_data.icon_background or "#F3F4F6",
-            is_default=agent_data.is_default or False
+            is_default=agent_data.is_default or False,
+            org_id=org_id
         )
+
+        # Increment org usage if in organization context
+        if org_id:
+            try:
+                await increment_org_agent_usage(org_id)
+            except Exception as e:
+                logger.warning(f"Failed to increment org agent usage: {e}")
         
         if not agent:
             raise HTTPException(status_code=500, detail="Failed to create agent")

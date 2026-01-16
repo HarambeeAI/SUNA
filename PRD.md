@@ -86,12 +86,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform engineer, I need to enforce plan limits so free users upgrade when they hit caps.
 
 **Acceptance Criteria:**
-- [ ] Check agent creation against org's plan `agent_limit`
-- [ ] Check agent runs against org's `run_limit_monthly`
-- [ ] Return 402 Payment Required when limit exceeded
-- [ ] Include upgrade CTA in error response
-- [ ] Log limit hits to analytics for conversion tracking
-- [ ] Typecheck passes
+- [x] Check agent creation against org's plan `agent_limit`
+- [x] Check agent runs against org's `run_limit_monthly`
+- [x] Return 402 Payment Required when limit exceeded
+- [x] Include upgrade CTA in error response
+- [x] Log limit hits to analytics for conversion tracking
+- [x] Typecheck passes
 
 ### US-008: Stripe subscription integration
 **Description:** As a developer, I need Stripe subscription management so users can upgrade to paid plans.

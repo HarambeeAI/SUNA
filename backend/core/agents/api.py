@@ -70,50 +70,67 @@ async def _get_agent_run_with_access_check(agent_run_id: str, user_id: str, requ
 
 
 async def _check_billing_and_limits(
-    client, 
-    account_id: str, 
-    model_name: Optional[str], 
-    check_project_limit: bool = False, 
-    check_thread_limit: bool = False
+    client,
+    account_id: str,
+    model_name: Optional[str],
+    check_project_limit: bool = False,
+    check_thread_limit: bool = False,
+    org_id: Optional[str] = None
 ):
-    """Check billing and limits in parallel."""
+    """Check billing and limits in parallel.
+
+    Args:
+        client: Supabase client
+        account_id: User's account ID
+        model_name: Model to check access for
+        check_project_limit: Whether to check project creation limit
+        check_thread_limit: Whether to check thread creation limit
+        org_id: Optional organization ID for org-level run limit checks
+    """
     from core.utils.limits_checker import (
-        check_agent_run_limit, 
+        check_agent_run_limit,
         check_project_count_limit,
         check_thread_limit as _check_thread_limit
     )
-    
+    from core.organizations import check_org_run_limit
+
     async def check_billing():
         if model_name == "mock-ai":
             return (True, None, {})
         return await billing_integration.check_model_and_billing_access(account_id, model_name, client)
-    
+
     async def check_agent_runs():
         if config.ENV_MODE == EnvMode.LOCAL:
             return {'can_start': True}
         return await check_agent_run_limit(account_id)
-    
+
+    async def check_org_runs():
+        """Check organization monthly run limits if in org context."""
+        if config.ENV_MODE == EnvMode.LOCAL or not org_id:
+            return {'can_run': True}
+        return await check_org_run_limit(org_id)
+
     async def check_projects():
         if config.ENV_MODE == EnvMode.LOCAL or not check_project_limit:
             return {'can_create': True}
         return await check_project_count_limit(account_id)
-    
+
     async def check_threads():
         if config.ENV_MODE == EnvMode.LOCAL or not check_thread_limit:
             return {'can_create': True}
         return await _check_thread_limit(account_id)
-    
-    billing_result, agent_run_result, project_result, thread_result = await asyncio.gather(
-        check_billing(), check_agent_runs(), check_projects(), check_threads()
+
+    billing_result, agent_run_result, org_run_result, project_result, thread_result = await asyncio.gather(
+        check_billing(), check_agent_runs(), check_org_runs(), check_projects(), check_threads()
     )
-    
+
     # Process billing result
     can_proceed, error_message, context = billing_result
     if not can_proceed:
         error_type = context.get("error_type")
         if error_type == "model_access_denied":
             raise HTTPException(status_code=402, detail={
-                "message": error_message, 
+                "message": error_message,
                 "tier_name": context.get("tier_name"),
                 "error_code": "MODEL_ACCESS_DENIED"
             })
@@ -124,8 +141,8 @@ async def _check_billing_and_limits(
             })
         else:
             raise HTTPException(status_code=500, detail={"message": error_message})
-    
-    # Check agent run limit
+
+    # Check concurrent agent run limit (per-user)
     if not agent_run_result.get('can_start', True):
         running_ids = [str(tid) for tid in agent_run_result.get('running_thread_ids', [])]
         raise HTTPException(status_code=402, detail={
@@ -136,6 +153,10 @@ async def _check_billing_and_limits(
             "error_code": "AGENT_RUN_LIMIT_EXCEEDED"
         })
 
+    # Check organization monthly run limit (if in org context)
+    if org_id and not org_run_result.get('can_run', True):
+        raise HTTPException(status_code=402, detail=org_run_result['error_response'])
+
     # Check project limit
     if check_project_limit and not project_result.get('can_create', True):
         raise HTTPException(status_code=402, detail={
@@ -144,7 +165,7 @@ async def _check_billing_and_limits(
             "limit": project_result['limit'],
             "error_code": "PROJECT_LIMIT_EXCEEDED"
         })
-    
+
     # Check thread limit
     if check_thread_limit and not thread_result.get('can_create', True):
         raise HTTPException(status_code=402, detail={
@@ -229,35 +250,41 @@ async def start_agent_run(
     is_optimistic: bool = False,
     emit_timing: bool = False,
     mode: Optional[str] = None,  # Mode: slides, sheets, docs, canvas, video, research
+    org_id: Optional[str] = None,  # Organization context for limit enforcement
 ) -> Dict[str, Any]:
     """Start an agent run - core business logic."""
     from core.agents.config import load_agent_config
     from core.threads import repo as threads_repo
     from core.utils.project_helpers import generate_and_update_project_name
-    
+    from core.organizations import increment_org_run_usage
+
     # Timing instrumentation for stress testing
     timing_breakdown = {}
     total_start = time.time()
-    
+
     client = await db.client
     is_new_thread = thread_id is None or is_optimistic
     now_iso = datetime.now(timezone.utc).isoformat()
-    
-    logger.info(f"🚀 start_agent_run: is_optimistic={is_optimistic}, is_new_thread={is_new_thread}")
-    
+
+    logger.info(f"🚀 start_agent_run: is_optimistic={is_optimistic}, is_new_thread={is_new_thread}, org_id={org_id}")
+
     image_contexts_to_inject = []
     final_message_content = prompt
-    
+
     # Parallel: load config + check limits
     step_start = time.time()
-    
+
     async def load_config():
         return await load_agent_config(agent_id, account_id, user_id=account_id, client=client, is_new_thread=is_new_thread)
-    
+
     async def check_limits():
         if not skip_limits_check:
-            await _check_billing_and_limits(client, account_id, model_name or "default", 
-                                           check_project_limit=is_new_thread, check_thread_limit=is_new_thread)
+            await _check_billing_and_limits(
+                client, account_id, model_name or "default",
+                check_project_limit=is_new_thread,
+                check_thread_limit=is_new_thread,
+                org_id=org_id
+            )
     
     agent_config, _ = await asyncio.gather(load_config(), check_limits())
     timing_breakdown["load_config_ms"] = round((time.time() - step_start) * 1000, 1)
@@ -360,6 +387,13 @@ async def start_agent_run(
     step_start = time.time()
     _, agent_run_id, _ = await asyncio.gather(create_message(), create_agent_run(), update_thread_status())
     timing_breakdown["create_message_and_run_ms"] = round((time.time() - step_start) * 1000, 1)
+
+    # Increment organization run usage if in org context
+    if org_id:
+        try:
+            await increment_org_run_usage(org_id)
+        except Exception as e:
+            logger.warning(f"Failed to increment org run usage: {e}")
     
     # Insert image contexts in background
     if image_contexts_to_inject:
@@ -469,9 +503,14 @@ async def unified_agent_start(
     user_id: str = Depends(verify_and_get_user_id_from_jwt)
 ):
     """Start an agent run. Files must be staged via /files/stage first."""
+    from core.organizations import auth_context_repo
+
     client = await db.client
     account_id = user_id
     is_optimistic = optimistic and optimistic.lower() == 'true'
+
+    # Get organization context for limit enforcement
+    org_id = await auth_context_repo.get_user_active_org_id(user_id)
     
     # Get staged files if file_ids provided
     staged_files_data = None
@@ -539,6 +578,7 @@ async def unified_agent_start(
             skip_limits_check=skip_limits,
             emit_timing=emit_timing,
             mode=mode,
+            org_id=org_id,
         )
         
         response = {
