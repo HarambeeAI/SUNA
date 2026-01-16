@@ -109,12 +109,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization admin, I want a settings page to manage my workspace so I can configure everything in one place.
 
 **Acceptance Criteria:**
-- [ ] Settings page shows: organization name, plan tier, billing status, usage stats
-- [ ] Editable fields: organization name, default agent settings
-- [ ] Display current usage: agents created, runs this month, percentage of limits
-- [ ] "Upgrade Plan" button for free tier users links to checkout
-- [ ] "Manage Billing" button for paid users opens Stripe portal
-- [ ] Typecheck passes
+- [x] Settings page shows: organization name, plan tier, billing status, usage stats
+- [x] Editable fields: organization name, default agent settings
+- [x] Display current usage: agents created, runs this month, percentage of limits
+- [x] "Upgrade Plan" button for free tier users links to checkout
+- [x] "Manage Billing" button for paid users opens Stripe portal
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-010: Team members management UI

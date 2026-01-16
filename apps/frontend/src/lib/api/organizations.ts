@@ -499,3 +499,122 @@ export const getOrganizationUsageHistory = async (
     return [];
   }
 };
+
+// ============================================================================
+// Organization Billing API Functions
+// ============================================================================
+
+export interface CheckoutRequest {
+  plan_tier: 'pro' | 'enterprise';
+  success_url: string;
+  cancel_url?: string;
+}
+
+export interface CheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+  message: string;
+}
+
+export interface BillingPortalRequest {
+  return_url: string;
+}
+
+export interface BillingPortalResponse {
+  portal_url: string;
+}
+
+export interface SubscriptionStatusResponse {
+  org_id: string;
+  plan_tier: PlanTier;
+  billing_status: BillingStatus;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  has_active_subscription: boolean;
+}
+
+/**
+ * Create a Stripe checkout session for organization upgrade
+ */
+export const createOrgCheckoutSession = async (
+  orgId: string,
+  data: CheckoutRequest
+): Promise<CheckoutResponse> => {
+  const response = await backendApi.post<CheckoutResponse>(
+    `/v1/organizations/${orgId}/billing/checkout`,
+    data,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'create checkout session',
+      resource: `organization ${orgId}`
+    });
+    throw new Error(response.error.message || 'Failed to create checkout session');
+  }
+
+  if (!response.data) {
+    throw new Error('Failed to create checkout session');
+  }
+
+  return response.data;
+};
+
+/**
+ * Create a Stripe billing portal session for the organization
+ */
+export const createOrgBillingPortalSession = async (
+  orgId: string,
+  data: BillingPortalRequest
+): Promise<BillingPortalResponse> => {
+  const response = await backendApi.post<BillingPortalResponse>(
+    `/v1/organizations/${orgId}/billing/portal`,
+    data,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'create billing portal session',
+      resource: `organization ${orgId}`
+    });
+    throw new Error(response.error.message || 'Failed to create billing portal session');
+  }
+
+  if (!response.data) {
+    throw new Error('Failed to create billing portal session');
+  }
+
+  return response.data;
+};
+
+/**
+ * Get subscription status for an organization
+ */
+export const getOrgSubscriptionStatus = async (
+  orgId: string
+): Promise<SubscriptionStatusResponse | null> => {
+  try {
+    const response = await backendApi.get<SubscriptionStatusResponse>(
+      `/v1/organizations/${orgId}/billing/status`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'get subscription status',
+        resource: `organization ${orgId}`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'get subscription status',
+      resource: `organization ${orgId}`
+    });
+    return null;
+  }
+};
