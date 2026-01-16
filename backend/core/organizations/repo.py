@@ -97,8 +97,11 @@ async def update_organization(
     if not updates:
         return await get_organization_by_id(org_id)
 
-    # Only allow updating specific columns
-    valid_columns = {"name", "slug", "plan_tier", "billing_status", "settings"}
+    # Only allow updating specific columns (including Stripe billing fields)
+    valid_columns = {
+        "name", "slug", "plan_tier", "billing_status", "settings",
+        "stripe_customer_id", "stripe_subscription_id"
+    }
     filtered_updates = {k: v for k, v in updates.items() if k in valid_columns}
 
     if not filtered_updates:
@@ -179,3 +182,79 @@ async def has_org_permission(user_id: str, org_id: str, min_role: str) -> bool:
     required_level = role_hierarchy.get(min_role, 0)
 
     return user_level >= required_level
+
+
+async def get_organization_by_stripe_customer_id(stripe_customer_id: str) -> Optional[Dict[str, Any]]:
+    """Get an organization by its Stripe customer ID."""
+    sql = """
+    SELECT
+        id, name, slug, plan_tier, billing_status, account_id,
+        stripe_customer_id, stripe_subscription_id, settings,
+        created_at, updated_at
+    FROM organizations
+    WHERE stripe_customer_id = :stripe_customer_id
+    """
+
+    result = await execute_one_read(sql, {"stripe_customer_id": stripe_customer_id})
+    return serialize_row(dict(result)) if result else None
+
+
+async def update_organization_billing(
+    org_id: str,
+    plan_tier: Optional[str] = None,
+    billing_status: Optional[str] = None,
+    stripe_customer_id: Optional[str] = None,
+    stripe_subscription_id: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Update an organization's billing-related fields.
+
+    This is a specialized update function for billing operations that only
+    modifies billing-related columns.
+    """
+    updates = {}
+    if plan_tier is not None:
+        updates["plan_tier"] = plan_tier
+    if billing_status is not None:
+        updates["billing_status"] = billing_status
+    if stripe_customer_id is not None:
+        updates["stripe_customer_id"] = stripe_customer_id
+    if stripe_subscription_id is not None:
+        updates["stripe_subscription_id"] = stripe_subscription_id
+
+    if not updates:
+        return await get_organization_by_id(org_id)
+
+    # Build SET clause dynamically
+    set_parts = [f"{key} = :{key}" for key in updates.keys()]
+    set_parts.append("updated_at = :updated_at")
+
+    sql = f"""
+    UPDATE organizations
+    SET {', '.join(set_parts)}
+    WHERE id = :org_id
+    RETURNING *
+    """
+
+    params = {
+        **updates,
+        "org_id": org_id,
+        "updated_at": datetime.now(timezone.utc)
+    }
+
+    result = await execute_one(sql, params, commit=True)
+    return serialize_row(dict(result)) if result else None
+
+
+async def get_organization_owners(org_id: str) -> List[Dict[str, Any]]:
+    """Get all owners of an organization for billing notifications."""
+    sql = """
+    SELECT
+        om.user_id,
+        om.role
+    FROM organization_members om
+    WHERE om.org_id = :org_id AND om.role = 'owner'
+    """
+
+    results = await execute_read(sql, {"org_id": org_id})
+    return serialize_rows([dict(r) for r in results])

@@ -97,13 +97,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a developer, I need Stripe subscription management so users can upgrade to paid plans.
 
 **Acceptance Criteria:**
-- [ ] POST `/v1/billing/checkout` creates Stripe checkout session
-- [ ] Webhook `/api/webhooks/stripe` handles subscription events
-- [ ] On `checkout.session.completed`: update org `plan_tier` and `billing_status`
-- [ ] On `customer.subscription.deleted`: downgrade org to free tier
-- [ ] On `invoice.payment_failed`: set billing_status to past_due
-- [ ] Store Stripe customer_id and subscription_id on organization
-- [ ] Typecheck passes
+- [x] POST `/v1/billing/checkout` creates Stripe checkout session
+- [x] Webhook `/api/webhooks/stripe` handles subscription events
+- [x] On `checkout.session.completed`: update org `plan_tier` and `billing_status`
+- [x] On `customer.subscription.deleted`: downgrade org to free tier
+- [x] On `invoice.payment_failed`: set billing_status to past_due
+- [x] Store Stripe customer_id and subscription_id on organization
+- [x] Typecheck passes
 
 ### US-009: Organization settings page UI
 **Description:** As an organization admin, I want a settings page to manage my workspace so I can configure everything in one place.

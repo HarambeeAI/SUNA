@@ -72,6 +72,16 @@ from .plan_tiers import (
     UsageHistoryResponse,
 )
 
+from .org_billing import (
+    OrgPlanTier,
+    OrgCheckoutRequest,
+    OrgCheckoutResponse,
+    OrgBillingPortalRequest,
+    OrgBillingPortalResponse,
+    OrgSubscriptionStatusResponse,
+    UpgradeCTA,
+)
+
 
 __all__ = [
     # Agent models
@@ -133,4 +143,13 @@ __all__ = [
     "OrganizationUsageResponse",
     "UsageRecordResponse",
     "UsageHistoryResponse",
+
+    # Organization billing models
+    "OrgPlanTier",
+    "OrgCheckoutRequest",
+    "OrgCheckoutResponse",
+    "OrgBillingPortalRequest",
+    "OrgBillingPortalResponse",
+    "OrgSubscriptionStatusResponse",
+    "UpgradeCTA",
 ]

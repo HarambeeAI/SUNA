@@ -5,6 +5,7 @@ from . import invitations_repo
 from . import auth_context_repo
 from . import rbac
 from . import usage_limits
+# Note: billing_webhooks is imported lazily in webhooks.py to avoid circular dependencies
 
 # Re-export commonly used RBAC components
 from .rbac import (

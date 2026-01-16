@@ -329,3 +329,55 @@
   - Analytics logging includes: org_id, limit_type, plan_tier, current_count, limit, usage_percent
   - Upgrade CTA URL pattern: /settings/billing?org={org_id}
 ---
+
+## Iteration 11 - US-008: Stripe subscription integration
+- What was implemented:
+  - Created backend/core/api_models/org_billing.py:
+    - OrgPlanTier enum: free, pro, enterprise
+    - OrgCheckoutRequest: plan_tier, success_url, cancel_url
+    - OrgCheckoutResponse: checkout_url, session_id, message
+    - OrgBillingPortalRequest/Response for billing portal sessions
+    - OrgSubscriptionStatusResponse for querying subscription status
+  - Created backend/core/organizations/billing_api.py:
+    - POST /organizations/{org_id}/billing/checkout - creates Stripe checkout session for org upgrade
+    - POST /organizations/{org_id}/billing/portal - creates Stripe billing portal session
+    - GET /organizations/{org_id}/billing/status - returns org subscription status
+    - All endpoints require org owner role via RBAC
+    - _get_or_create_org_stripe_customer helper creates/retrieves Stripe customer for org
+  - Created backend/core/organizations/billing_webhooks.py:
+    - OrgBillingWebhookHandler class with static methods for handling Stripe events
+    - handle_checkout_session_completed: updates org plan_tier, billing_status, stripe_customer_id, stripe_subscription_id
+    - handle_subscription_deleted: downgrades org to free tier
+    - handle_invoice_payment_failed: sets billing_status to past_due
+    - handle_subscription_updated: maps Stripe subscription status to billing_status
+    - _find_org_by_subscription_id helper to find org by subscription
+    - _map_subscription_status maps Stripe status to our billing_status enum
+  - Updated backend/core/organizations/repo.py:
+    - update_organization now allows updating stripe_customer_id, stripe_subscription_id
+    - Added update_organization_billing for billing-specific updates
+    - Added get_organization_by_stripe_customer_id
+    - Added get_organization_owners for billing notifications
+  - Updated backend/core/billing/external/stripe/webhooks.py:
+    - Integrated org webhook handlers with lazy imports to avoid circular dependencies
+    - checkout.session.completed, subscription.created/updated/deleted, invoice.payment_failed all try org handler first
+  - Updated backend/api.py to include org_billing_router
+  - Updated backend/core/api_models/__init__.py to export org billing models
+- Files changed:
+  - backend/core/api_models/org_billing.py (new)
+  - backend/core/organizations/billing_api.py (new)
+  - backend/core/organizations/billing_webhooks.py (new)
+  - backend/core/organizations/repo.py (modified - added billing update functions)
+  - backend/core/organizations/__init__.py (modified - removed billing_webhooks import to avoid circular deps)
+  - backend/core/billing/external/stripe/webhooks.py (modified - integrated org webhook handlers)
+  - backend/api.py (modified - includes org_billing_router)
+  - backend/core/api_models/__init__.py (modified - exports org billing models)
+  - PRD.md (marked US-008 as complete)
+- Learnings for future iterations:
+  - Existing billing system is sophisticated with circuit breaker, idempotency, distributed locks
+  - Organization billing is separate from account billing - uses org_id in metadata
+  - Webhook handlers check account_type='organization' in metadata to route to org handler
+  - Use lazy imports (inside functions) to avoid circular dependencies between billing and organizations modules
+  - StripeAPIWrapper provides safe_stripe_call with timeout and circuit breaker protection
+  - Organizations store stripe_customer_id and stripe_subscription_id for direct Stripe lookups
+  - Plan tiers map to Stripe price IDs via config.STRIPE_TIER_X_Y_ID properties
+---
