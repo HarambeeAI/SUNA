@@ -595,6 +595,62 @@ async def require_agent_access(
 # Sandbox Authorization Functions
 # ============================================================================
 
+class AuthContext:
+    """
+    Auth context that includes user_id and active organization_id.
+
+    Usage:
+        @router.get("/example")
+        async def example_endpoint(
+            auth: AuthContext = Depends(get_auth_context)
+        ):
+            user_id = auth.user_id
+            org_id = auth.org_id  # May be None for personal workspace
+    """
+    def __init__(self, user_id: str, org_id: Optional[str] = None):
+        self.user_id = user_id
+        self.org_id = org_id
+
+
+async def get_auth_context(request: Request) -> AuthContext:
+    """
+    FastAPI dependency that returns auth context with user_id and active org_id.
+
+    The org_id is fetched from the user's preferences (set via /v1/auth/context/switch).
+    If no active org is set, org_id will be None (personal workspace).
+
+    Returns:
+        AuthContext: Object containing user_id and optional org_id
+
+    Raises:
+        HTTPException: If authentication fails
+    """
+    # First authenticate the user
+    user_id = await verify_and_get_user_id_from_jwt(request)
+
+    # Get the user's active organization
+    from core.organizations import auth_context_repo
+    org_id = await auth_context_repo.get_user_active_org_id(user_id)
+
+    # Bind org_id to logging context if set
+    if org_id:
+        structlog.contextvars.bind_contextvars(org_id=org_id)
+
+    return AuthContext(user_id=user_id, org_id=org_id)
+
+
+async def get_optional_auth_context(request: Request) -> Optional[AuthContext]:
+    """
+    FastAPI dependency that returns auth context if authenticated, None otherwise.
+
+    Useful for endpoints that support both authenticated and anonymous access.
+    """
+    try:
+        return await get_auth_context(request)
+    except HTTPException:
+        return None
+
+
 async def verify_sandbox_access(client, sandbox_id: str, user_id: str):
     """
     Verify that a user has access to a specific sandbox by checking resource ownership and project permissions.

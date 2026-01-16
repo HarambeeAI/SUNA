@@ -5,10 +5,30 @@ from core.utils.logger import logger
 async def list_user_threads(
     account_id: str,
     limit: int = 100,
-    offset: int = 0
+    offset: int = 0,
+    org_id: Optional[str] = None
 ) -> Tuple[List[Dict[str, Any]], int]:
-    sql = """
-    SELECT 
+    """
+    List threads for a user, optionally filtered by organization.
+
+    Args:
+        account_id: The user's account ID
+        limit: Max number of threads to return
+        offset: Number of threads to skip
+        org_id: If provided, only return threads belonging to this organization.
+                If None, return threads from personal workspace (where org_id IS NULL).
+    """
+    # Build WHERE clause based on whether org_id is provided
+    if org_id is not None:
+        where_clause = "WHERE t.org_id = :org_id"
+        params = {"org_id": org_id, "limit": limit, "offset": offset}
+    else:
+        # Personal workspace: threads where org_id IS NULL and account_id matches
+        where_clause = "WHERE t.account_id = :account_id AND t.org_id IS NULL"
+        params = {"account_id": account_id, "limit": limit, "offset": offset}
+
+    sql = f"""
+    SELECT
         t.thread_id,
         t.project_id,
         t.name,
@@ -16,6 +36,7 @@ async def list_user_threads(
         t.is_public,
         t.created_at,
         t.updated_at,
+        t.org_id,
         -- Project fields (NULL if no project)
         p.name AS project_name,
         p.icon_name AS project_icon_name,
@@ -26,16 +47,12 @@ async def list_user_threads(
         COUNT(*) OVER() AS total_count
     FROM threads t
     LEFT JOIN projects p ON t.project_id = p.project_id
-    WHERE t.account_id = :account_id
+    {where_clause}
     ORDER BY t.created_at DESC
     LIMIT :limit OFFSET :offset
     """
     
-    rows = await execute(sql, {
-        "account_id": account_id,
-        "limit": limit,
-        "offset": offset
-    })
+    rows = await execute(sql, params)
     
     if not rows:
         return [], 0
@@ -59,6 +76,7 @@ async def list_user_threads(
         threads.append({
             "thread_id": row["thread_id"],
             "project_id": row["project_id"],
+            "org_id": row.get("org_id"),
             "name": row["name"] or "New Chat",
             "metadata": row["metadata"] or {},
             "is_public": row["is_public"] or False,
@@ -151,22 +169,34 @@ async def create_thread(
     thread_id: str,
     project_id: str,
     account_id: str,
-    name: str = "New Chat"
+    name: str = "New Chat",
+    org_id: Optional[str] = None
 ) -> Dict[str, Any]:
+    """
+    Create a new thread.
+
+    Args:
+        thread_id: The unique thread ID
+        project_id: The project ID this thread belongs to
+        account_id: The user's account ID (owner)
+        name: Display name for the thread
+        org_id: Optional organization ID. If provided, the thread belongs to the org.
+    """
     from core.services.db import execute_one
     from datetime import datetime, timezone
-    
+
     sql = """
-    INSERT INTO threads (thread_id, project_id, account_id, name, created_at)
-    VALUES (:thread_id, :project_id, :account_id, :name, :created_at)
-    RETURNING thread_id, project_id, account_id, name, created_at, updated_at
+    INSERT INTO threads (thread_id, project_id, account_id, name, org_id, created_at)
+    VALUES (:thread_id, :project_id, :account_id, :name, :org_id, :created_at)
+    RETURNING thread_id, project_id, account_id, org_id, name, created_at, updated_at
     """
-    
+
     result = await execute_one(sql, {
         "thread_id": thread_id,
         "project_id": project_id,
         "account_id": account_id,
         "name": name,
+        "org_id": org_id,
         "created_at": datetime.now(timezone.utc)
     }, commit=True)
     

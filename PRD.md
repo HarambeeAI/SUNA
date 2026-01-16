@@ -65,12 +65,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a backend developer, I need to include organization context in auth tokens so all requests are properly scoped.
 
 **Acceptance Criteria:**
-- [ ] JWT tokens include `org_id` claim when user operates in org context
-- [ ] User can switch between personal workspace and organizations
-- [ ] GET `/v1/auth/context` returns current org_id and available organizations
-- [ ] POST `/v1/auth/context/switch` changes active organization
-- [ ] All agent/thread operations use active org_id from token
-- [ ] Typecheck passes
+- [x] JWT tokens include `org_id` claim when user operates in org context
+- [x] User can switch between personal workspace and organizations
+- [x] GET `/v1/auth/context` returns current org_id and available organizations
+- [x] POST `/v1/auth/context/switch` changes active organization
+- [x] All agent/thread operations use active org_id from token
+- [x] Typecheck passes
 
 ### US-006: Freemium plan tier schema
 **Description:** As a product manager, I need to define plan tiers in the database so we can enforce usage limits.

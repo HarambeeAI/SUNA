@@ -46,6 +46,7 @@ from core.endpoints.system_status_api import router as system_status_router
 from core.services import transcription as transcription_api
 from core.organizations.api import router as organizations_router
 from core.organizations.invitations_api import router as invitations_router
+from core.organizations.auth_context_api import router as auth_context_router
 import sys
 from core.triggers import api as triggers_api
 from core.services import api_keys_api
@@ -321,6 +322,7 @@ api_router.include_router(system_status_admin_router)
 api_router.include_router(system_status_router)
 api_router.include_router(organizations_router)
 api_router.include_router(invitations_router)
+api_router.include_router(auth_context_router)
 
 from core.mcp_module import api as mcp_api
 from core.credentials import api as credentials_api

@@ -2,6 +2,7 @@
 
 from . import repo
 from . import invitations_repo
+from . import auth_context_repo
 from . import rbac
 
 # Re-export commonly used RBAC components

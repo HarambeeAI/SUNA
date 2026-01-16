@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, Form, Query, Body, Request
-from core.utils.auth_utils import verify_and_get_user_id_from_jwt, verify_and_authorize_thread_access, require_thread_access, require_thread_write_access, AuthorizedThreadAccess, get_optional_user_id
+from core.utils.auth_utils import verify_and_get_user_id_from_jwt, verify_and_authorize_thread_access, require_thread_access, require_thread_write_access, AuthorizedThreadAccess, get_optional_user_id, get_auth_context, AuthContext
 from core.utils.logger import logger
 from core.sandbox.sandbox import create_sandbox, delete_sandbox
 from core.utils.config import config, EnvMode
@@ -20,16 +20,25 @@ router = APIRouter(tags=["threads"])
 @router.get("/threads", summary="List User Threads", operation_id="list_user_threads")
 async def get_user_threads(
     request: Request,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt),
+    auth: AuthContext = Depends(get_auth_context),
     page: Optional[int] = Query(1, ge=1, description="Page number (1-based)"),
     limit: Optional[int] = Query(100, ge=1, le=1000, description="Number of items per page (max 1000)")
 ):
+    """
+    List threads for the current user or organization.
+
+    If the user has an active organization context, returns threads belonging to that org.
+    Otherwise, returns threads from the user's personal workspace.
+    """
     from core.threads.repo import list_user_threads as repo_list_threads
-    
-    logger.debug(f"Fetching threads for user: {user_id} (page={page}, limit={limit})")
+
+    user_id = auth.user_id
+    org_id = auth.org_id
+
+    logger.debug(f"Fetching threads for user: {user_id}, org: {org_id} (page={page}, limit={limit})")
     try:
         offset = (page - 1) * limit
-        threads, total_count = await repo_list_threads(user_id, limit, offset)
+        threads, total_count = await repo_list_threads(user_id, limit, offset, org_id=org_id)
         
         if total_count == 0:
             logger.debug(f"No threads found for user: {user_id}")
@@ -169,19 +178,28 @@ async def get_project_threads(
 @router.post("/projects/{project_id}/threads", response_model=CreateThreadResponse, summary="Create Thread in Project", operation_id="create_thread_in_project")
 async def create_thread_in_project(
     project_id: str,
-    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+    auth: AuthContext = Depends(get_auth_context)
 ):
+    """
+    Create a new thread in a project.
+
+    If the user has an active organization context, the thread will be associated with that org.
+    Otherwise, it will be a personal workspace thread.
+    """
     from core.threads.repo import get_project_access, create_thread as repo_create_thread
-    
-    logger.debug(f"Creating new thread in project: {project_id}")
-    client = await db.client
+
+    user_id = auth.user_id
+    org_id = auth.org_id
     account_id = user_id
-    
+
+    logger.debug(f"Creating new thread in project: {project_id}, org: {org_id}")
+    client = await db.client
+
     try:
         project = await get_project_access(project_id, account_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found or access denied")
-        
+
         if config.ENV_MODE != EnvMode.LOCAL:
             from core.utils.limits_checker import check_thread_limit
             thread_limit_check = await check_thread_limit(account_id)
@@ -195,21 +213,23 @@ async def create_thread_in_project(
                 }
                 logger.warning(f"Thread limit exceeded for account {account_id}: {thread_limit_check['current_count']}/{thread_limit_check['limit']}")
                 raise HTTPException(status_code=402, detail=error_detail)
-        
+
         thread_id = str(uuid.uuid4())
-        
+
         from core.utils.logger import structlog
         structlog.contextvars.bind_contextvars(
             thread_id=thread_id,
             project_id=project_id,
             account_id=account_id,
+            org_id=org_id,
         )
-        
+
         thread_result = await repo_create_thread(
             thread_id=thread_id,
             project_id=project_id,
             account_id=account_id,
-            name="New Chat"
+            name="New Chat",
+            org_id=org_id
         )
         
         if not thread_result:

@@ -202,3 +202,50 @@
   - Members can create/manage own resources but cannot manage others' resources
   - Viewers are read-only (5 permissions: view org, members, agents, threads, settings)
 ---
+
+## Iteration 8 - US-005: Organization context in authentication
+- What was implemented:
+  - Created database migration 20260117000000_user_org_preferences.sql:
+    - user_org_preferences table for tracking active org context per user
+    - RLS policies for user-only access to their preferences
+    - Helper functions: get_user_active_org_id, set_user_active_org, get_user_auth_context
+  - Created Pydantic API models (backend/core/api_models/auth_context.py):
+    - OrganizationSummary - compact org info with role
+    - AuthContextResponse - full context with active org and available orgs
+    - SwitchOrgRequest, SwitchOrgResponse - for switching active org
+  - Created repository functions (backend/core/organizations/auth_context_repo.py):
+    - get_user_active_org_id, set_user_active_org, get_user_auth_context, validate_org_access
+  - Created API endpoints (backend/core/organizations/auth_context_api.py):
+    - GET /v1/auth/context - returns current org_id and available organizations
+    - POST /v1/auth/context/switch - changes active organization
+  - Created AuthContext class and get_auth_context dependency in auth_utils.py:
+    - Provides user_id and org_id to endpoints via FastAPI dependency injection
+    - Binds org_id to structlog context for request tracking
+  - Updated threads API to use org context:
+    - list_user_threads now filters by org_id when active
+    - create_thread_in_project now associates threads with active org
+  - Updated threads repo to support org_id:
+    - list_user_threads takes optional org_id parameter
+    - create_thread accepts org_id parameter
+  - Registered auth_context_router in backend/api.py
+  - Updated api_models/__init__.py to export auth context models
+- Files changed:
+  - backend/supabase/migrations/20260117000000_user_org_preferences.sql (new)
+  - backend/core/api_models/auth_context.py (new)
+  - backend/core/api_models/__init__.py (modified - exports auth context models)
+  - backend/core/organizations/auth_context_repo.py (new)
+  - backend/core/organizations/auth_context_api.py (new)
+  - backend/core/organizations/__init__.py (modified - exports auth_context_repo)
+  - backend/core/utils/auth_utils.py (modified - added AuthContext class and get_auth_context)
+  - backend/core/threads/api.py (modified - uses auth context for list and create)
+  - backend/core/threads/repo.py (modified - supports org_id in queries)
+  - backend/api.py (modified - includes auth_context_router)
+  - PRD.md (marked US-005 as complete)
+- Learnings for future iterations:
+  - Use get_auth_context dependency for endpoints that need both user_id and org_id
+  - AuthContext provides user_id and org_id (None for personal workspace)
+  - User preferences stored in user_org_preferences table with upsert pattern
+  - When org_id is set in auth context, filter queries by org_id instead of account_id
+  - Personal workspace uses account_id with org_id IS NULL filter
+  - The org context is automatically bound to structlog for request tracking
+---

@@ -54,6 +54,13 @@ from .invitations import (
     AcceptInvitationResponse,
 )
 
+from .auth_context import (
+    OrganizationSummary,
+    AuthContextResponse,
+    SwitchOrgRequest,
+    SwitchOrgResponse,
+)
+
 
 __all__ = [
     # Agent models
@@ -99,4 +106,10 @@ __all__ = [
     "InvitationsListResponse",
     "InvitationPublicResponse",
     "AcceptInvitationResponse",
+
+    # Auth context models
+    "OrganizationSummary",
+    "AuthContextResponse",
+    "SwitchOrgRequest",
+    "SwitchOrgResponse",
 ]
