@@ -23,9 +23,9 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Add `organizations` table with fields: id, name, slug, plan_tier, billing_status, created_at
 - [x] Add `organization_members` table with fields: id, org_id, user_id, role, invited_by, joined_at
 - [x] Add `org_id` foreign key column to `threads`, `agents`, and `agent_runs` tables
-- [ ] Create database migration files for all schema changes
-- [ ] Add row-level security (RLS) policies to enforce tenant isolation
-- [ ] Typecheck passes
+- [x] Create database migration files for all schema changes
+- [x] Add row-level security (RLS) policies to enforce tenant isolation
+- [x] Typecheck passes
 
 ### US-002: Organization creation and management API
 **Description:** As a backend developer, I need API endpoints for organization management so users can create and manage their workspaces.

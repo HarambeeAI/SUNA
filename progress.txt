@@ -78,3 +78,19 @@
   - Use has_org_permission() for organization-level checks in RLS policies
   - Thread/agent/run access now supports: personal workspace (via account_id), organization (via org_id), and project-based access
 ---
+
+## Iteration 4 - US-001: Finalize schema migration (AC 4-6)
+- What was implemented:
+  - Verified all migration files are in place:
+    - 20260116215926_organizations_table.sql
+    - 20260116220000_organization_members_table.sql
+    - 20260116220100_add_org_id_to_tables.sql
+  - Verified RLS policies exist for all tables: organizations, organization_members, threads, agents, agent_runs
+  - Verified lint/typecheck passes
+- Files changed:
+  - PRD.md (marked AC 4-6 as complete, US-001 is now fully complete)
+- Learnings for future iterations:
+  - Migration files are created as part of implementing the schema changes
+  - RLS policies are added in the same migration as the table/column changes
+  - US-001 is now complete with full multi-tenant database schema
+---
