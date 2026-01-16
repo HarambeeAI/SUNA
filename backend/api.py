@@ -44,6 +44,7 @@ from core.admin.stress_test_admin_api import router as stress_test_admin_router
 from core.admin.system_status_admin_api import router as system_status_admin_router
 from core.endpoints.system_status_api import router as system_status_router
 from core.services import transcription as transcription_api
+from core.organizations.api import router as organizations_router
 import sys
 from core.triggers import api as triggers_api
 from core.services import api_keys_api
@@ -317,6 +318,7 @@ api_router.include_router(analytics_admin_router)
 api_router.include_router(stress_test_admin_router)
 api_router.include_router(system_status_admin_router)
 api_router.include_router(system_status_router)
+api_router.include_router(organizations_router)
 
 from core.mcp_module import api as mcp_api
 from core.credentials import api as credentials_api

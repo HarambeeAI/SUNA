@@ -31,12 +31,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a backend developer, I need API endpoints for organization management so users can create and manage their workspaces.
 
 **Acceptance Criteria:**
-- [ ] POST `/v1/organizations` endpoint creates new organization
-- [ ] GET `/v1/organizations/:id` returns organization details with member list
-- [ ] PATCH `/v1/organizations/:id` updates organization name/settings
-- [ ] Endpoint validates user has owner/admin role for mutations
-- [ ] Returns 403 for unauthorized access attempts
-- [ ] Typecheck passes
+- [x] POST `/v1/organizations` endpoint creates new organization
+- [x] GET `/v1/organizations/:id` returns organization details with member list
+- [x] PATCH `/v1/organizations/:id` updates organization name/settings
+- [x] Endpoint validates user has owner/admin role for mutations
+- [x] Returns 403 for unauthorized access attempts
+- [x] Typecheck passes
 
 ### US-003: Team member invitation system
 **Description:** As an organization admin, I want to invite team members to my workspace so we can collaborate on agents.

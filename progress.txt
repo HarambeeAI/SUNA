@@ -94,3 +94,40 @@
   - RLS policies are added in the same migration as the table/column changes
   - US-001 is now complete with full multi-tenant database schema
 ---
+
+## Iteration 5 - US-002: Organization creation and management API
+- What was implemented:
+  - Created backend/core/organizations/ module with:
+    - __init__.py - module definition
+    - repo.py - database repository functions (create, get, update, list orgs and members)
+    - api.py - FastAPI router with endpoints:
+      - POST /v1/organizations - create new organization
+      - GET /v1/organizations/{org_id} - get organization with member list
+      - PATCH /v1/organizations/{org_id} - update organization (name/settings)
+      - GET /v1/organizations - list user's organizations
+  - Created backend/core/api_models/organizations.py with Pydantic models:
+    - PlanTier, BillingStatus, OrganizationRole enums
+    - OrganizationCreateRequest, OrganizationUpdateRequest
+    - OrganizationResponse, OrganizationMemberResponse, OrganizationsListResponse
+  - Updated backend/core/api_models/__init__.py to export organization models
+  - Updated backend/api.py to include organizations_router
+  - Role-based access control:
+    - GET /organizations/:id - requires org membership
+    - PATCH /organizations/:id - requires admin or owner role
+    - Returns 403 for unauthorized access
+- Files changed:
+  - backend/core/organizations/__init__.py (new)
+  - backend/core/organizations/repo.py (new)
+  - backend/core/organizations/api.py (new)
+  - backend/core/api_models/organizations.py (new)
+  - backend/core/api_models/__init__.py (modified - exports org models)
+  - backend/api.py (modified - includes organizations_router)
+  - PRD.md (marked US-002 as complete)
+- Learnings for future iterations:
+  - Follow existing patterns: router in api.py, db functions in repo.py, models in api_models/
+  - Use has_org_permission(user_id, org_id, min_role) for RBAC checks
+  - Frontend API client already exists at apps/frontend/src/lib/api/organizations.ts
+  - Use serialize_row/serialize_rows from db.py for consistent serialization
+  - Use execute_one_read for read operations (supports read replicas)
+  - Use execute_one with commit=True for writes
+---
