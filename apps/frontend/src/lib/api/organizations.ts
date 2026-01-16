@@ -618,3 +618,112 @@ export const getOrgSubscriptionStatus = async (
     return null;
   }
 };
+
+// ============================================================================
+// Invitations Types
+// ============================================================================
+
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'revoked';
+
+export interface Invitation {
+  id: string;
+  org_id: string;
+  email: string;
+  role: OrganizationRole;
+  status: InvitationStatus;
+  invited_by: string;
+  created_at: string;
+  expires_at: string;
+  accepted_at?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface InvitationsListResponse {
+  invitations: Invitation[];
+}
+
+export interface CreateInvitationRequest {
+  email: string;
+  role: OrganizationRole;
+}
+
+// ============================================================================
+// Invitations API Functions
+// ============================================================================
+
+/**
+ * Get all invitations for an organization
+ */
+export const getOrganizationInvitations = async (orgId: string): Promise<Invitation[]> => {
+  try {
+    const response = await backendApi.get<InvitationsListResponse>(
+      `/v1/organizations/${orgId}/invitations`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load invitations',
+        resource: `organization ${orgId} invitations`
+      });
+      return [];
+    }
+
+    return response.data?.invitations || [];
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load invitations',
+      resource: `organization ${orgId} invitations`
+    });
+    return [];
+  }
+};
+
+/**
+ * Create a new invitation
+ */
+export const createInvitation = async (
+  orgId: string,
+  data: CreateInvitationRequest
+): Promise<Invitation> => {
+  const response = await backendApi.post<Invitation>(
+    `/v1/organizations/${orgId}/invitations`,
+    data,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'create invitation',
+      resource: `organization ${orgId} invitation`
+    });
+    throw new Error(response.error.message || 'Failed to create invitation');
+  }
+
+  if (!response.data) {
+    throw new Error('Failed to create invitation');
+  }
+
+  return response.data;
+};
+
+/**
+ * Revoke an invitation
+ */
+export const revokeInvitation = async (
+  orgId: string,
+  invitationId: string
+): Promise<void> => {
+  const response = await backendApi.delete(
+    `/v1/organizations/${orgId}/invitations/${invitationId}`,
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'revoke invitation',
+      resource: `invitation ${invitationId}`
+    });
+    throw new Error(response.error.message || 'Failed to revoke invitation');
+  }
+};

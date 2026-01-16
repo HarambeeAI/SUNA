@@ -121,12 +121,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization admin, I want to see and manage team members so I can control workspace access.
 
 **Acceptance Criteria:**
-- [ ] Members tab shows table: name, email, role, joined date, actions
-- [ ] "Invite Member" button opens modal with email and role selection
-- [ ] Change role dropdown (disabled for owners)
-- [ ] Remove member button with confirmation dialog
-- [ ] Show pending invitations with option to resend or revoke
-- [ ] Typecheck passes
+- [x] Members tab shows table: name, email, role, joined date, actions
+- [x] "Invite Member" button opens modal with email and role selection
+- [x] Change role dropdown (disabled for owners)
+- [x] Remove member button with confirmation dialog
+- [x] Show pending invitations with option to resend or revoke
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-011: Organization switcher in navigation
