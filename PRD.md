@@ -22,7 +22,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Acceptance Criteria:**
 - [x] Add `organizations` table with fields: id, name, slug, plan_tier, billing_status, created_at
 - [x] Add `organization_members` table with fields: id, org_id, user_id, role, invited_by, joined_at
-- [ ] Add `org_id` foreign key column to `threads`, `agents`, and `agent_runs` tables
+- [x] Add `org_id` foreign key column to `threads`, `agents`, and `agent_runs` tables
 - [ ] Create database migration files for all schema changes
 - [ ] Add row-level security (RLS) policies to enforce tenant isolation
 - [ ] Typecheck passes

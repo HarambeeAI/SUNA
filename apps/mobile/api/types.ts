@@ -35,6 +35,7 @@ export interface Thread {
   thread_id: string;
   project_id: string;
   account_id: string;
+  org_id?: string | null; // Organization ID for multi-tenant support
   is_public: boolean;
   created_at: string;
   updated_at: string;
@@ -47,6 +48,7 @@ export interface Thread {
 export interface AgentRun {
   id: string;
   thread_id: string;
+  org_id?: string | null; // Organization ID for multi-tenant support
   status: 'running' | 'completed' | 'failed' | 'stopped' | 'cancelled';
   model_name?: string;
   error?: string;
@@ -157,6 +159,8 @@ export interface UploadedFile {
 
 export interface Agent {
   agent_id: string;
+  account_id?: string;
+  org_id?: string | null; // Organization ID for multi-tenant support
   name: string;
   description?: string;
   system_prompt?: string;

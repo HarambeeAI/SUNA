@@ -7,6 +7,7 @@ export type ThreadStatus = 'pending' | 'initializing' | 'ready' | 'error';
 export type Thread = {
   thread_id: string;
   project_id?: string | null;
+  org_id?: string | null; // Organization ID for multi-tenant support
   name?: string;
   is_public?: boolean;
   created_at: string;

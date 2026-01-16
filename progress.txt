@@ -56,3 +56,25 @@
   - Self-removal (leave org) is allowed except for last owner
   - Admins can manage members/viewers but not owners/other admins
 ---
+
+## Iteration 3 - US-001: Add org_id to threads, agents, agent_runs (third AC)
+- What was implemented:
+  - Created SQL migration 20260116220100_add_org_id_to_tables.sql
+  - Added org_id column (nullable FK to organizations) to threads, agents, and agent_runs tables
+  - Created indexes for org_id columns
+  - Updated RLS policies for all three tables to support organization-based access
+  - Added helper functions: get_org_threads, get_org_agents, get_org_agent_runs
+  - Updated TypeScript types to include org_id field
+- Files changed:
+  - backend/supabase/migrations/20260116220100_add_org_id_to_tables.sql (new)
+  - apps/mobile/api/types.ts (modified - added org_id to Thread, Agent, AgentRun)
+  - apps/frontend/src/lib/api/threads.ts (modified - added org_id to Thread)
+  - apps/frontend/src/lib/api/agents.ts (modified - added org_id to AgentRun)
+  - apps/frontend/src/hooks/agents/utils.ts (modified - added org_id to Agent)
+  - PRD.md (marked third AC as complete)
+- Learnings for future iterations:
+  - org_id is nullable to support personal workspace resources (account_id) alongside organization resources
+  - RLS policies now check both account_id and org_id for access control
+  - Use has_org_permission() for organization-level checks in RLS policies
+  - Thread/agent/run access now supports: personal workspace (via account_id), organization (via org_id), and project-based access
+---

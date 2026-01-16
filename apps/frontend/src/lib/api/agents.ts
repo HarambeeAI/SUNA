@@ -10,6 +10,7 @@ const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 export type AgentRun = {
   id: string;
   thread_id: string;
+  org_id?: string | null; // Organization ID for multi-tenant support
   status: 'running' | 'completed' | 'stopped' | 'error';
   started_at: string;
   completed_at: string | null;

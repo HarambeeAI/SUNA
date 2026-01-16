@@ -4,6 +4,8 @@ const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 export type Agent = {
   agent_id: string;
+  account_id?: string;
+  org_id?: string | null; // Organization ID for multi-tenant support
   name: string;
   system_prompt: string;
   model?: string | null;
