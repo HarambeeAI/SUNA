@@ -469,3 +469,36 @@
   - Use queryClient.invalidateQueries to refresh data after mutations
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 15 - US-011: Organization switcher in navigation
+- What was implemented:
+  - Added auth context API functions to organizations.ts (getAuthContext, switchOrganization)
+  - Added auth context types: OrganizationSummary, AuthContextResponse, SwitchOrgRequest, SwitchOrgResponse
+  - Created organization context hooks in apps/frontend/src/hooks/organizations/:
+    - useOrgContext: fetches auth context
+    - useSwitchOrg: switches active organization with thread/agent list invalidation
+    - useCreateOrg: creates new organization
+    - useActiveOrg: convenience hook for active org info
+  - Updated NavUserWithTeams component with Organizations section:
+    - Personal workspace option with User icon
+    - All available organizations with Building2 icon
+    - Checkmark indicator for currently active org
+    - Create Organization option with Plus icon
+  - Added Create Organization dialog with name and slug inputs
+  - Fixed bug in members page (updateOrganizationMemberRole param type)
+- Files changed:
+  - apps/frontend/src/lib/api/organizations.ts (modified - added auth context API functions)
+  - apps/frontend/src/hooks/organizations/index.ts (new)
+  - apps/frontend/src/hooks/organizations/use-org-context.ts (new)
+  - apps/frontend/src/components/sidebar/nav-user-with-teams.tsx (modified - added org switcher)
+  - apps/frontend/src/app/(dashboard)/settings/members/page.tsx (modified - fixed type bug)
+  - PRD.md (marked US-011 ACs as complete)
+- Learnings for future iterations:
+  - Auth context API at /v1/auth/context provides active_org, active_org_id, available_organizations
+  - Switch org API at /v1/auth/context/switch accepts org_id (null for personal workspace)
+  - Organization switcher is in NavUserWithTeams alongside the existing workspace switcher
+  - Use router.refresh() after org switch to reload content with new context
+  - Query keys for invalidation: ['org-context'], ['user-threads'], ['agents']
+  - Building2 icon for organizations, User icon for personal workspace
+  - Browser verification still pending - requires manual testing
+---

@@ -727,3 +727,90 @@ export const revokeInvitation = async (
     throw new Error(response.error.message || 'Failed to revoke invitation');
   }
 };
+
+// ============================================================================
+// Auth Context Types
+// ============================================================================
+
+export interface OrganizationSummary {
+  id: string;
+  name: string;
+  slug: string;
+  plan_tier: PlanTier;
+  role: OrganizationRole;
+}
+
+export interface AuthContextResponse {
+  user_id: string;
+  active_org_id: string | null;
+  active_org: OrganizationSummary | null;
+  available_organizations: OrganizationSummary[];
+}
+
+export interface SwitchOrgRequest {
+  org_id: string | null;
+}
+
+export interface SwitchOrgResponse {
+  success: boolean;
+  active_org_id: string | null;
+  active_org: OrganizationSummary | null;
+  message: string;
+}
+
+// ============================================================================
+// Auth Context API Functions
+// ============================================================================
+
+/**
+ * Get the current authentication context including active org and available orgs
+ */
+export const getAuthContext = async (): Promise<AuthContextResponse | null> => {
+  try {
+    const response = await backendApi.get<AuthContextResponse>('/v1/auth/context', {
+      showErrors: false,
+    });
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'get auth context',
+        resource: 'auth context'
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'get auth context',
+      resource: 'auth context'
+    });
+    return null;
+  }
+};
+
+/**
+ * Switch the active organization context
+ * Pass orgId to switch to an organization, or null to switch to personal workspace
+ */
+export const switchOrganization = async (orgId: string | null): Promise<SwitchOrgResponse> => {
+  const response = await backendApi.post<SwitchOrgResponse>(
+    '/v1/auth/context/switch',
+    { org_id: orgId },
+    { showErrors: true }
+  );
+
+  if (response.error) {
+    handleApiError(response.error, {
+      operation: 'switch organization',
+      resource: 'organization context'
+    });
+    throw new Error(response.error.message || 'Failed to switch organization');
+  }
+
+  if (!response.data) {
+    throw new Error('Failed to switch organization');
+  }
+
+  return response.data;
+};

@@ -79,6 +79,11 @@ import { ReferralDialog } from '@/components/referrals/referral-dialog';
 import { Badge } from '@/components/ui/badge';
 import { SpotlightCard } from '@/components/ui/spotlight-card';
 import { trackCtaUpgrade } from '@/lib/analytics/gtm';
+import { useActiveOrg, useSwitchOrg, useCreateOrg } from '@/hooks/organizations';
+import { Building2, Check } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 export function NavUserWithTeams({
   user,
@@ -103,6 +108,14 @@ export function NavUserWithTeams({
   const [settingsTab, setSettingsTab] = React.useState<'general' | 'billing' | 'usage' | 'env-manager'>('general');
   const { isOpen: isReferralDialogOpen, openDialog: openReferralDialog, closeDialog: closeReferralDialog } = useReferralDialog();
   const { theme, setTheme } = useTheme();
+
+  // Organization context
+  const { activeOrg, activeOrgId, availableOrgs, isLoading: isOrgLoading } = useActiveOrg();
+  const switchOrgMutation = useSwitchOrg();
+  const createOrgMutation = useCreateOrg();
+  const [showCreateOrgDialog, setShowCreateOrgDialog] = React.useState(false);
+  const [newOrgName, setNewOrgName] = React.useState('');
+  const [newOrgSlug, setNewOrgSlug] = React.useState('');
 
   // Check if user is on free tier
   const isFreeTier = accountState?.subscription?.tier_key === 'free' ||
@@ -181,6 +194,50 @@ export function NavUserWithTeams({
       router.push('/dashboard');
     } else {
       router.push(`/${team.slug}`);
+    }
+  };
+
+  // Handle organization selection
+  const handleOrgSelect = async (orgId: string | null) => {
+    try {
+      await switchOrgMutation.mutateAsync(orgId);
+      // Reload to refresh content with new org context
+      router.refresh();
+    } catch (error) {
+      toast.error('Failed to switch organization');
+    }
+  };
+
+  // Handle organization creation
+  const handleCreateOrg = async () => {
+    if (!newOrgName.trim()) {
+      toast.error('Organization name is required');
+      return;
+    }
+
+    const slug = newOrgSlug.trim() || newOrgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    try {
+      const org = await createOrgMutation.mutateAsync({
+        name: newOrgName.trim(),
+        slug,
+      });
+      toast.success(`Organization "${org.name}" created`);
+      setShowCreateOrgDialog(false);
+      setNewOrgName('');
+      setNewOrgSlug('');
+      // Switch to the new organization
+      await handleOrgSelect(org.id);
+    } catch (error) {
+      toast.error('Failed to create organization');
+    }
+  };
+
+  // Auto-generate slug from name
+  const handleOrgNameChange = (name: string) => {
+    setNewOrgName(name);
+    if (!newOrgSlug || newOrgSlug === newOrgName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')) {
+      setNewOrgSlug(name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
     }
   };
 
@@ -337,7 +394,7 @@ export function NavUserWithTeams({
 
               {/* <DropdownMenuSeparator />
               <DialogTrigger asChild>
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   className="gap-2 p-2"
                   onClick={() => {
                     setShowNewTeamDialog(true)
@@ -352,6 +409,53 @@ export function NavUserWithTeams({
               {(personalAccount || (teamAccounts && teamAccounts.length > 0)) && (
                 <DropdownMenuSeparator className="my-1" />
               )}
+
+              {/* Organizations Section */}
+              <DropdownMenuLabel className="text-muted-foreground text-xs px-2 py-1.5">
+                Organizations
+              </DropdownMenuLabel>
+              {/* Personal Workspace (no organization) */}
+              <DropdownMenuItem
+                onClick={() => handleOrgSelect(null)}
+                className="gap-2 p-2"
+                disabled={switchOrgMutation.isPending}
+              >
+                <div className="flex size-6 items-center justify-center rounded-xs border">
+                  <User className="size-4 shrink-0" />
+                </div>
+                <span className="flex-1">Personal</span>
+                {!activeOrgId && (
+                  <Check className="size-4 text-primary" />
+                )}
+              </DropdownMenuItem>
+              {/* Available Organizations */}
+              {availableOrgs.map((org) => (
+                <DropdownMenuItem
+                  key={org.id}
+                  onClick={() => handleOrgSelect(org.id)}
+                  className="gap-2 p-2"
+                  disabled={switchOrgMutation.isPending}
+                >
+                  <div className="flex size-6 items-center justify-center rounded-xs border">
+                    <Building2 className="size-4 shrink-0" />
+                  </div>
+                  <span className="flex-1 truncate">{org.name}</span>
+                  {activeOrgId === org.id && (
+                    <Check className="size-4 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+              {/* Create Organization Option */}
+              <DropdownMenuItem
+                onClick={() => setShowCreateOrgDialog(true)}
+                className="gap-2 p-2"
+              >
+                <div className="flex size-6 items-center justify-center rounded-xs border bg-muted">
+                  <Plus className="size-4 shrink-0" />
+                </div>
+                <span className="flex-1 text-muted-foreground">Create Organization</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
 
               {/* General Section */}
               <DropdownMenuLabel className="text-muted-foreground text-xs px-2 py-1.5">
@@ -545,6 +649,61 @@ export function NavUserWithTeams({
         open={isReferralDialogOpen}
         onOpenChange={closeReferralDialog}
       />
+
+      {/* Create Organization Dialog */}
+      <Dialog open={showCreateOrgDialog} onOpenChange={setShowCreateOrgDialog}>
+        <DialogContent className="sm:max-w-[425px] border-subtle dark:border-white/10 bg-card-bg dark:bg-background-secondary rounded-2xl shadow-custom">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">
+              Create Organization
+            </DialogTitle>
+            <DialogDescription className="text-foreground/70">
+              Create a new organization to collaborate with your team.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="org-name">Organization Name</Label>
+              <Input
+                id="org-name"
+                placeholder="My Organization"
+                value={newOrgName}
+                onChange={(e) => handleOrgNameChange(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="org-slug">URL Slug</Label>
+              <Input
+                id="org-slug"
+                placeholder="my-organization"
+                value={newOrgSlug}
+                onChange={(e) => setNewOrgSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              />
+              <p className="text-xs text-muted-foreground">
+                This will be used in URLs: /org/{newOrgSlug || 'my-organization'}
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateOrgDialog(false);
+                setNewOrgName('');
+                setNewOrgSlug('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateOrg}
+              disabled={createOrgMutation.isPending || !newOrgName.trim()}
+            >
+              {createOrgMutation.isPending ? 'Creating...' : 'Create Organization'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

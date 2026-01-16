@@ -133,12 +133,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a user with multiple organizations, I want to switch between them so I can access different workspaces.
 
 **Acceptance Criteria:**
-- [ ] Dropdown in navbar shows: Personal, Organization A, Organization B, etc.
-- [ ] Display current active organization with checkmark
-- [ ] Clicking switches context and reloads thread list
-- [ ] "Create Organization" option at bottom of dropdown
-- [ ] Show organization logo/avatar if available
-- [ ] Typecheck passes
+- [x] Dropdown in navbar shows: Personal, Organization A, Organization B, etc.
+- [x] Display current active organization with checkmark
+- [x] Clicking switches context and reloads thread list
+- [x] "Create Organization" option at bottom of dropdown
+- [x] Show organization logo/avatar if available
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-012: Agent template schema and storage

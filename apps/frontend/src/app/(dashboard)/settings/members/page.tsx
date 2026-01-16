@@ -165,7 +165,7 @@ export default function TeamMembersPage() {
   // Update member role mutation
   const updateRoleMutation = useMutation({
     mutationFn: ({ memberId, role }: { memberId: string; role: OrganizationRole }) =>
-      updateOrganizationMemberRole(orgId!, memberId, role),
+      updateOrganizationMemberRole(orgId!, memberId, { role }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['organization-members', orgId] });
       toast.success('Member role updated');
