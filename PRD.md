@@ -76,11 +76,11 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a product manager, I need to define plan tiers in the database so we can enforce usage limits.
 
 **Acceptance Criteria:**
-- [ ] Add `plan_tiers` table with: tier_name, monthly_price, agent_limit, run_limit_monthly, features_json
-- [ ] Seed data: Free (0, 3 agents, 100 runs), Pro ($49, unlimited agents, 5000 runs), Enterprise (custom)
-- [ ] Add `current_usage` table tracking: org_id, period_start, agents_created, runs_executed
-- [ ] Reset usage counters monthly via cron job
-- [ ] Typecheck passes
+- [x] Add `plan_tiers` table with: tier_name, monthly_price, agent_limit, run_limit_monthly, features_json
+- [x] Seed data: Free (0, 3 agents, 100 runs), Pro ($49, unlimited agents, 5000 runs), Enterprise (custom)
+- [x] Add `current_usage` table tracking: org_id, period_start, agents_created, runs_executed
+- [x] Reset usage counters monthly via cron job
+- [x] Typecheck passes
 
 ### US-007: Usage limit enforcement
 **Description:** As a platform engineer, I need to enforce plan limits so free users upgrade when they hit caps.

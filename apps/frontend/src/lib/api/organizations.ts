@@ -316,3 +316,186 @@ export const removeOrganizationMember = async (
     throw new Error(response.error.message || 'Failed to remove member');
   }
 };
+
+// ============================================================================
+// Plan Tiers and Usage Types
+// ============================================================================
+
+export interface PlanTierFeatures {
+  support_level: 'community' | 'email' | 'dedicated';
+  api_access: boolean;
+  custom_branding: boolean;
+  priority_execution: boolean;
+  sso: boolean;
+  audit_logs: boolean;
+  dedicated_support: boolean;
+  custom_integrations?: boolean;
+  sla_guarantee?: boolean;
+}
+
+export interface PlanTierInfo {
+  id: string;
+  tier_name: PlanTier;
+  display_name: string;
+  monthly_price_cents: number | null;
+  agent_limit: number | null;
+  run_limit_monthly: number | null;
+  features: PlanTierFeatures;
+}
+
+export interface UsageLimits {
+  agent_limit: number | null;
+  run_limit_monthly: number | null;
+}
+
+export interface UsagePercentages {
+  agents_percent: number;
+  runs_percent: number;
+}
+
+export interface OrganizationUsage {
+  org_id: string;
+  org_name: string;
+  plan_tier: PlanTier;
+  period_start: string;
+  period_end: string;
+  agents_created: number;
+  runs_executed: number;
+  total_tokens_used: number;
+  estimated_cost_cents: number;
+  limits: UsageLimits;
+  usage_percentages: UsagePercentages;
+}
+
+export interface UsageRecord {
+  id: string;
+  org_id: string;
+  period_start: string;
+  period_end: string;
+  agents_created: number;
+  runs_executed: number;
+  total_tokens_used: number;
+  estimated_cost_cents: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Plan Tiers API Functions
+// ============================================================================
+
+/**
+ * Get all available plan tiers
+ */
+export const getPlanTiers = async (): Promise<PlanTierInfo[]> => {
+  try {
+    const response = await backendApi.get<{ tiers: PlanTierInfo[] }>('/v1/plan-tiers', {
+      showErrors: false,
+    });
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load plan tiers',
+        resource: 'plan tiers'
+      });
+      return [];
+    }
+
+    return response.data?.tiers || [];
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load plan tiers',
+      resource: 'plan tiers'
+    });
+    return [];
+  }
+};
+
+/**
+ * Get a specific plan tier by name
+ */
+export const getPlanTier = async (tierName: PlanTier): Promise<PlanTierInfo | null> => {
+  try {
+    const response = await backendApi.get<PlanTierInfo>(`/v1/plan-tiers/${tierName}`, {
+      showErrors: false,
+    });
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load plan tier',
+        resource: `plan tier ${tierName}`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load plan tier',
+      resource: `plan tier ${tierName}`
+    });
+    return null;
+  }
+};
+
+// ============================================================================
+// Organization Usage API Functions
+// ============================================================================
+
+/**
+ * Get current usage for an organization (with limits)
+ */
+export const getOrganizationUsage = async (orgId: string): Promise<OrganizationUsage | null> => {
+  try {
+    const response = await backendApi.get<OrganizationUsage>(`/v1/organizations/${orgId}/usage`, {
+      showErrors: false,
+    });
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load organization usage',
+        resource: `organization ${orgId} usage`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load organization usage',
+      resource: `organization ${orgId} usage`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get usage history for an organization
+ */
+export const getOrganizationUsageHistory = async (
+  orgId: string,
+  limit: number = 12
+): Promise<UsageRecord[]> => {
+  try {
+    const response = await backendApi.get<{ usage_records: UsageRecord[]; total_records: number }>(
+      `/v1/organizations/${orgId}/usage/history?limit=${limit}`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load usage history',
+        resource: `organization ${orgId} usage history`
+      });
+      return [];
+    }
+
+    return response.data?.usage_records || [];
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load usage history',
+      resource: `organization ${orgId} usage history`
+    });
+    return [];
+  }
+};
