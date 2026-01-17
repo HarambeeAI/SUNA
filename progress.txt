@@ -889,3 +889,159 @@
   - Database schema ready for server-side persistence when needed
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 22 - US-022: Billing portal integration
+- What was implemented:
+  - Billing portal endpoint already existed at /organizations/{org_id}/billing/portal
+  - Added success message handling after returning from billing portal
+  - Added success/canceled message handling for checkout redirect
+  - Updated billing portal return URL to include billing=updated query param
+  - Added useEffect to handle URL params and show toast messages
+  - Clean up URL params after showing message (router.replace)
+  - Updated webhook handler to properly log cancel_at_period_end state
+  - Added detailed documentation for graceful cancellation flow
+- Files changed:
+  - apps/frontend/src/app/(dashboard)/settings/organization/page.tsx (modified - added billing message handling)
+  - backend/core/organizations/billing_webhooks.py (modified - improved cancellation handling docs)
+  - PRD.md (marked US-022 as complete)
+- Learnings for future iterations:
+  - Billing portal endpoint lives at /organizations/{org_id}/billing/portal (not /v1/billing/portal)
+  - Stripe portal handles payment method updates, invoice viewing, and cancellation natively
+  - When user cancels via portal, Stripe sets cancel_at_period_end=true but status remains 'active'
+  - Actual downgrade to free tier happens when subscription.deleted webhook fires
+  - Use URL query params (billing=updated, checkout=success) to trigger toast messages on return
+  - router.replace with scroll: false to clean up URL without scroll jump
+  - Checkout success URL includes checkout=success, canceled uses checkout=canceled
+  - Invalidate org queries on checkout success to refresh plan info
+---
+
+## Iteration 23 - US-023: Email notifications for billing events
+- What was implemented:
+  - Created OrgBillingNotificationService (backend/core/notifications/org_billing_notifications.py):
+    - send_subscription_created: "Welcome to Worryless AI Pro!" email on checkout complete
+    - send_payment_success: "Your payment was processed successfully" email on invoice.payment_succeeded
+    - send_payment_failed: "Action required: Update your payment method" email on invoice.payment_failed
+    - send_usage_limit_approaching: "You're approaching your plan limit" email at 80% usage
+    - send_usage_limit_reached: "You've reached your plan limit" email at 100% usage
+    - Helper methods: _get_org_owners, _get_org_info, _get_account_info, _get_plan_features
+  - Created branded HTML email templates (backend/supabase/emails/novu/):
+    - org-subscription-created.html - Welcome email with plan features list
+    - org-payment-success.html - Payment confirmation with invoice link
+    - org-payment-failed.html - Action required with update payment CTA
+    - org-usage-approaching.html - Warning with usage progress bar
+    - org-usage-limit-reached.html - Limit reached with upgrade CTA
+  - Integrated notifications into billing webhooks (billing_webhooks.py):
+    - handle_checkout_session_completed: Sends subscription created notification
+    - handle_invoice_payment_succeeded: NEW handler for payment success notifications
+    - handle_invoice_payment_failed: Sends payment failed notification
+  - Updated stripe webhooks.py to route invoice.payment_succeeded to org handler
+  - Extended usage_limits.py for approaching/hit notifications:
+    - Added APPROACHING_LIMIT_THRESHOLD constant (80%)
+    - Added check_and_notify_approaching_limit function
+    - Added cache-based deduplication (_check_approaching_notification_sent, _mark_approaching_notification_sent)
+    - Updated increment_org_agent_usage to check approaching limit
+    - Updated increment_org_run_usage to check approaching limit
+    - Updated _log_limit_hit to send limit reached notification
+- Files changed:
+  - backend/core/notifications/org_billing_notifications.py (new)
+  - backend/supabase/emails/novu/org-subscription-created.html (new)
+  - backend/supabase/emails/novu/org-payment-success.html (new)
+  - backend/supabase/emails/novu/org-payment-failed.html (new)
+  - backend/supabase/emails/novu/org-usage-approaching.html (new)
+  - backend/supabase/emails/novu/org-usage-limit-reached.html (new)
+  - backend/core/organizations/billing_webhooks.py (modified - added notifications, new payment_succeeded handler)
+  - backend/core/billing/external/stripe/webhooks.py (modified - routes payment_succeeded to org handler)
+  - backend/core/organizations/usage_limits.py (modified - added approaching limit notifications)
+  - PRD.md (marked US-023 as complete)
+- Learnings for future iterations:
+  - Novu workflows are triggered by workflow_id (e.g., "org-subscription-created")
+  - Notification service sends to all org owners (role='owner' in organization_members)
+  - Use asyncio.create_task for non-blocking notification sending in webhooks
+  - Cache-based deduplication uses 32-day TTL to cover full billing period
+  - Approaching limit notifications use Cache.get/set for tracking
+  - Email templates use Handlebars-style {{variable}} placeholders
+  - Templates include branded styling (Worryless AI) and clear CTAs
+  - All notifications are org-scoped - sent to org owners, not individual users
+---
+
+## Iteration 24 - US-024: Agent run cost calculation
+- What was implemented:
+  - Database migration 20260118000000_agent_run_cost_tracking.sql:
+    - Added columns to agent_runs: cost_usd (DECIMAL), input_tokens, output_tokens, total_tokens, tool_execution_ms (all BIGINT)
+    - Created indexes for cost queries: idx_agent_runs_cost_usd, idx_agent_runs_total_tokens, idx_agent_runs_org_cost
+    - Created SQL helper function: update_agent_run_usage() to incrementally update cost/token data
+    - Created analytics functions: get_org_cost_summary(), get_org_cost_by_agent()
+  - Created cost tracking service (backend/core/agents/cost_tracking.py):
+    - AgentRunCostTracker class: accumulates LLM usage and tool execution time per agent run
+    - Cost calculation using existing calculator.py (calculate_token_cost, calculate_cached_token_cost, calculate_cache_write_cost)
+    - Global registry of active trackers with get_or_create_cost_tracker, finalize_cost_tracker
+    - Convenience functions: track_llm_usage(), track_tool_execution()
+  - Integrated cost tracking into billing flow:
+    - Updated ThreadManager.__init__ to accept agent_run_id parameter
+    - Updated ThreadManager._handle_billing to call track_llm_usage after successful deduction
+    - Updated AgentConfig dataclass to include agent_run_id
+    - Updated execute_agent_run to pass agent_run_id to AgentConfig
+    - Updated AgentRunner._initialize_agent to pass agent_run_id to ThreadManager
+    - Added finalize_cost_tracker call in execute_agent_run before status update
+  - Integrated tool execution time tracking:
+    - Updated ResponseProcessor._execute_tool to track time using time.monotonic()
+    - Calls track_tool_execution on success and error paths
+  - Updated organization usage dashboard:
+    - Updated get_org_dashboard_stats query to include cost_summary CTE
+    - Returns total_cost_usd, total_input_tokens, total_output_tokens, total_tokens, total_tool_execution_ms
+    - Updated get_org_usage_export to include cost fields in CSV export
+  - Updated API models:
+    - Added cost fields to DashboardStats: total_cost_usd, total_input_tokens, total_output_tokens, total_tokens, total_tool_execution_ms
+    - Added cost fields to UsageExportRow: cost_usd, input_tokens, output_tokens, total_tokens, tool_execution_ms
+- Files changed:
+  - backend/supabase/migrations/20260118000000_agent_run_cost_tracking.sql (new)
+  - backend/core/agents/cost_tracking.py (new)
+  - backend/core/agents/runner/config.py (modified - added agent_run_id)
+  - backend/core/agents/runner/agent_runner.py (modified - passes agent_run_id, calls finalize_cost_tracker)
+  - backend/core/agentpress/thread_manager.py (modified - accepts agent_run_id, tracks LLM usage)
+  - backend/core/agentpress/response_processor.py (modified - tracks tool execution time)
+  - backend/core/organizations/usage_dashboard_repo.py (modified - includes cost data in queries)
+  - backend/core/api_models/usage_dashboard.py (modified - added cost fields to models)
+  - PRD.md (marked US-024 as complete)
+- Learnings for future iterations:
+  - Cost tracking uses in-memory accumulation then flushes to DB on agent run completion
+  - ThreadManager receives agent_run_id via AgentConfig -> AgentRunner -> ThreadManager
+  - Tool execution time tracked via time.monotonic() in _execute_tool (more reliable than datetime)
+  - asyncio.create_task used for non-blocking tool time tracking
+  - Cost is calculated from LLM provider pricing via existing calculator.py functions
+  - Dashboard queries use CTE to aggregate cost data from agent_runs table
+---
+
+## Iteration 25 - US-025: Rate limiting for free tier
+- What was implemented:
+  - Created hourly rate limiting system using Redis for agent runs
+  - Rate limits by plan tier: Free (10/hr), Pro (100/hr), Enterprise (unlimited)
+  - Created backend/core/organizations/hourly_rate_limiter.py:
+    - HOURLY_RATE_LIMITS dict defining limits per tier
+    - check_hourly_rate_limit: async function that checks Redis counter and returns can_proceed/error_response
+    - get_current_hourly_usage: utility function for UI to show remaining quota
+    - _get_current_hour_key: Redis key generator using hour timestamp
+    - _get_seconds_until_next_hour: calculates Retry-After value
+    - _build_rate_limit_error: builds 429 error response with upgrade CTA
+  - Added get_user_plan_tier function to auth_context_repo.py:
+    - Returns plan tier from org (if in org context) or account billing subscription
+    - Falls back to 'free' if not found
+  - Integrated rate limit check into _check_billing_and_limits in agents/api.py:
+    - Added check_hourly_rate async function running in parallel with other checks
+    - Returns 429 Too Many Requests with Retry-After header when limit exceeded
+  - Updated organizations/__init__.py to export new functions
+- Files changed:
+  - backend/core/organizations/hourly_rate_limiter.py (new)
+  - backend/core/organizations/auth_context_repo.py (modified - added get_user_plan_tier)
+  - backend/core/organizations/__init__.py (modified - exports hourly_rate_limiter functions)
+  - backend/core/agents/api.py (modified - integrated hourly rate limit check)
+  - PRD.md (marked US-025 as complete)
+- Learnings for future iterations:
+  - Redis rate limiting uses INCR for atomic increment with TTL on first set
+  - Redis key pattern: rate_limit:hourly_runs:{context}:{hour_timestamp}
+  - Context is org_id for org users, user_id for personal workspace
+  - Use 429 status code (not 402) for rate limiting with Retry-After header
+  - Rate limit check runs in parallel with other limit checks via asyncio.gather
+  - Plan tier can come from organizations table (org context) or basejump.billing_subscriptions (personal)
+  - Fail open on errors to not block users unexpectedly
+---

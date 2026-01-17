@@ -301,13 +301,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform engineer, I need to implement rate limiting so free tier users don't abuse the system.
 
 **Acceptance Criteria:**
-- [ ] Free tier: max 10 agent runs per hour per user
-- [ ] Pro tier: max 100 agent runs per hour per user
-- [ ] Enterprise tier: no rate limit
-- [ ] Rate limit tracked via Redis with sliding window
-- [ ] Return 429 Too Many Requests when limit exceeded
-- [ ] Response includes `Retry-After` header with seconds to wait
-- [ ] Typecheck passes
+- [x] Free tier: max 10 agent runs per hour per user
+- [x] Pro tier: max 100 agent runs per hour per user
+- [x] Enterprise tier: no rate limit
+- [x] Rate limit tracked via Redis with sliding window
+- [x] Return 429 Too Many Requests when limit exceeded
+- [x] Response includes `Retry-After` header with seconds to wait
+- [x] Typecheck passes
 
 ### US-026: Public agent sharing links
 **Description:** As an organization member, I want to generate public share links for agents so I can demo them externally.

@@ -6,6 +6,7 @@ from . import auth_context_repo
 from . import rbac
 from . import usage_limits
 from . import usage_dashboard_repo
+from . import hourly_rate_limiter
 # Note: billing_webhooks is imported lazily in webhooks.py to avoid circular dependencies
 
 # Re-export commonly used RBAC components
@@ -30,4 +31,12 @@ from .usage_limits import (
     increment_org_run_usage,
     ERROR_CODE_AGENT_LIMIT,
     ERROR_CODE_RUN_LIMIT,
+)
+
+# Re-export hourly rate limit functions
+from .hourly_rate_limiter import (
+    check_hourly_rate_limit,
+    get_current_hourly_usage,
+    HOURLY_RATE_LIMITS,
+    ERROR_CODE_RATE_LIMIT,
 )

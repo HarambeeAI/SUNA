@@ -144,3 +144,50 @@ async def validate_org_access(user_id: str, org_id: str) -> Optional[str]:
     })
 
     return result["role"] if result else None
+
+
+async def get_user_plan_tier(user_id: str, org_id: Optional[str] = None) -> str:
+    """
+    Get the plan tier for a user based on their context.
+
+    If org_id is provided, returns the organization's plan tier.
+    Otherwise, tries to get from account's billing subscription.
+    Falls back to 'free' if not found.
+
+    Args:
+        user_id: The user's ID
+        org_id: Optional organization ID
+
+    Returns:
+        Plan tier string ('free', 'pro', 'enterprise')
+    """
+    if org_id:
+        # Get organization's plan tier
+        sql = """
+        SELECT plan_tier::text as plan_tier
+        FROM organizations
+        WHERE id = :org_id
+        """
+        result = await execute_one_read(sql, {"org_id": org_id})
+        if result and result.get("plan_tier"):
+            return result["plan_tier"]
+
+    # For personal workspace, check basejump billing subscription
+    # or default to free
+    sql = """
+    SELECT
+        CASE
+            WHEN bs.status = 'active' THEN
+                COALESCE(bs.plan_name, 'pro')
+            ELSE 'free'
+        END as plan_tier
+    FROM basejump.accounts a
+    LEFT JOIN basejump.billing_subscriptions bs ON bs.account_id = a.id AND bs.status = 'active'
+    WHERE a.primary_owner_user_id = :user_id
+    LIMIT 1
+    """
+    result = await execute_one_read(sql, {"user_id": user_id})
+    if result and result.get("plan_tier"):
+        return result["plan_tier"]
+
+    return "free"

@@ -92,7 +92,8 @@ async def _check_billing_and_limits(
         check_project_count_limit,
         check_thread_limit as _check_thread_limit
     )
-    from core.organizations import check_org_run_limit
+    from core.organizations import check_org_run_limit, check_hourly_rate_limit
+    from core.organizations import auth_context_repo
 
     async def check_billing():
         if model_name == "mock-ai":
@@ -110,6 +111,14 @@ async def _check_billing_and_limits(
             return {'can_run': True}
         return await check_org_run_limit(org_id)
 
+    async def check_hourly_rate():
+        """Check hourly rate limit based on plan tier (US-025)."""
+        if config.ENV_MODE == EnvMode.LOCAL:
+            return {'can_proceed': True}
+        # Get plan tier for rate limit check
+        plan_tier = await auth_context_repo.get_user_plan_tier(account_id, org_id)
+        return await check_hourly_rate_limit(account_id, org_id, plan_tier)
+
     async def check_projects():
         if config.ENV_MODE == EnvMode.LOCAL or not check_project_limit:
             return {'can_create': True}
@@ -120,8 +129,8 @@ async def _check_billing_and_limits(
             return {'can_create': True}
         return await _check_thread_limit(account_id)
 
-    billing_result, agent_run_result, org_run_result, project_result, thread_result = await asyncio.gather(
-        check_billing(), check_agent_runs(), check_org_runs(), check_projects(), check_threads()
+    billing_result, agent_run_result, org_run_result, hourly_rate_result, project_result, thread_result = await asyncio.gather(
+        check_billing(), check_agent_runs(), check_org_runs(), check_hourly_rate(), check_projects(), check_threads()
     )
 
     # Process billing result
@@ -156,6 +165,16 @@ async def _check_billing_and_limits(
     # Check organization monthly run limit (if in org context)
     if org_id and not org_run_result.get('can_run', True):
         raise HTTPException(status_code=402, detail=org_run_result['error_response'])
+
+    # Check hourly rate limit (US-025)
+    if not hourly_rate_result.get('can_proceed', True):
+        # Use 429 with Retry-After header for rate limiting
+        retry_after = hourly_rate_result.get('retry_after_seconds', 3600)
+        raise HTTPException(
+            status_code=429,
+            detail=hourly_rate_result['error_response'],
+            headers={"Retry-After": str(retry_after)}
+        )
 
     # Check project limit
     if check_project_limit and not project_result.get('can_create', True):
