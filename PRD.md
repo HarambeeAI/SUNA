@@ -203,12 +203,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a user creating an agent, I want to optionally start from a template so I don't build from scratch.
 
 **Acceptance Criteria:**
-- [ ] Agent creation modal has two tabs: "Blank Agent" and "From Template"
-- [ ] From Template tab shows mini template browser (same UI as marketplace)
-- [ ] Selecting template pre-fills system prompt and tool configuration
-- [ ] User can still edit all fields before creating
-- [ ] "View Full Template" link opens template detail modal
-- [ ] Typecheck passes
+- [x] Agent creation modal has two tabs: "Blank Agent" and "From Template"
+- [x] From Template tab shows mini template browser (same UI as marketplace)
+- [x] Selecting template pre-fills system prompt and tool configuration
+- [x] User can still edit all fields before creating
+- [x] "View Full Template" link opens template detail modal
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-018: Shared agents within organization

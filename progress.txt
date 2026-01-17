@@ -642,3 +642,41 @@
   - Route to /agents/config/{agent_id} after agent creation
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 21 - US-017: Template preview in agent creation
+- What was implemented:
+  - Completely rewrote AgentCreationModal to use a tabbed interface
+  - Added "Blank Agent" and "From Template" tabs using shadcn/ui Tabs component
+  - Blank Agent tab provides:
+    - "Start from Scratch" option with Create Blank Worker button
+    - "Configure with AI" option that opens chat description step
+  - From Template tab provides:
+    - Mini template browser with search input and category filtering
+    - Template cards showing: icon, name, description, tags, official badge
+    - Click to select template for creation
+    - "Browse Full Template Marketplace" link to /templates page
+  - When template is selected:
+    - Shows selected template preview with icon, name, description
+    - "View Full Template" link opens MarketplaceAgentPreviewDialog
+    - Agent name input field (pre-filled with template name, editable)
+    - System prompt preview (truncated to 3 lines)
+    - Enabled tools preview (up to 6 tools with "+N more" badge)
+    - Create Worker button using POST /agents/from-template/{template_id}
+    - Back to Templates button to return to template browser
+  - Fetches templates via getTemplates API with search and category params
+  - Fetches categories via getTemplateCategories API
+  - All fields are editable before creating (name can be customized)
+  - Error handling for agent limit exceeded
+- Files changed:
+  - apps/frontend/src/components/agents/agent-creation-modal.tsx (rewritten)
+  - PRD.md (marked US-017 ACs as complete)
+- Learnings for future iterations:
+  - Use Tabs component from shadcn/ui for tabbed interfaces
+  - Use ScrollArea for scrollable content within fixed-height containers
+  - Template config structure: config.metadata.avatar for icon, config.metadata.avatar_color for color
+  - Template config structure: config.tools.agentpress for tool configuration
+  - AgentTemplate type from templates.ts is the API response type
+  - MarketplaceTemplate from installation/types.ts is the preview dialog's expected type
+  - Need to convert between the two types for the preview dialog
+  - Browser verification still pending - requires manual testing
+---
