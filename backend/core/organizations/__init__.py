@@ -7,6 +7,7 @@ from . import rbac
 from . import usage_limits
 from . import usage_dashboard_repo
 from . import hourly_rate_limiter
+from . import org_api_keys_repo
 # Note: billing_webhooks is imported lazily in webhooks.py to avoid circular dependencies
 
 # Re-export commonly used RBAC components

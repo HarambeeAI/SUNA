@@ -363,13 +363,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a developer, I want to generate API keys so I can integrate Worryless AI into my applications.
 
 **Acceptance Criteria:**
-- [ ] API Keys section in organization settings
-- [ ] "Generate API Key" button creates new key with scopes
-- [ ] Scopes: read:agents, write:agents, execute:agents, read:templates
-- [ ] Display key once on creation with copy button, then show only prefix
-- [ ] List existing keys with: name, prefix, created date, last used, revoke button
-- [ ] Keys authenticate via `Authorization: Bearer <key>` header
-- [ ] Typecheck passes
+- [x] API Keys section in organization settings
+- [x] "Generate API Key" button creates new key with scopes
+- [x] Scopes: read:agents, write:agents, execute:agents, read:templates
+- [x] Display key once on creation with copy button, then show only prefix
+- [x] List existing keys with: name, prefix, created date, last used, revoke button
+- [x] Keys authenticate via `Authorization: Bearer <key>` header
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ## Non-Goals

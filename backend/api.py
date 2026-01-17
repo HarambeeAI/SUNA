@@ -52,6 +52,7 @@ from core.organizations.billing_api import router as org_billing_router
 from core.organizations.usage_dashboard_api import router as usage_dashboard_router
 from core.agents.share_links_api import router as share_links_router
 from core.agents.agent_analytics_api import router as agent_analytics_router
+from core.organizations.org_api_keys_api import router as org_api_keys_router
 import sys
 from core.triggers import api as triggers_api
 from core.services import api_keys_api
@@ -333,6 +334,7 @@ api_router.include_router(org_billing_router)
 api_router.include_router(usage_dashboard_router)
 api_router.include_router(share_links_router)
 api_router.include_router(agent_analytics_router)
+api_router.include_router(org_api_keys_router)
 
 from core.mcp_module import api as mcp_api
 from core.credentials import api as credentials_api

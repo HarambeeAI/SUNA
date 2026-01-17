@@ -131,6 +131,17 @@ from .agent_analytics import (
     AgentAnalyticsDashboard,
 )
 
+from .org_api_keys import (
+    OrgApiKeyScope,
+    OrgApiKeyStatus,
+    OrgApiKeyCreateRequest,
+    OrgApiKeyResponse,
+    OrgApiKeyCreateResponse,
+    OrgApiKeyListResponse,
+    OrgApiKeyValidationResult,
+    OrgApiKeyUpdateRequest,
+)
+
 
 __all__ = [
     # Agent models
@@ -246,4 +257,14 @@ __all__ = [
     "ToolExecutionDetail",
     "ToolExecutionsResponse",
     "AgentAnalyticsDashboard",
+
+    # Organization API keys models (US-030)
+    "OrgApiKeyScope",
+    "OrgApiKeyStatus",
+    "OrgApiKeyCreateRequest",
+    "OrgApiKeyResponse",
+    "OrgApiKeyCreateResponse",
+    "OrgApiKeyListResponse",
+    "OrgApiKeyValidationResult",
+    "OrgApiKeyUpdateRequest",
 ]
