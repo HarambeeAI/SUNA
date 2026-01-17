@@ -126,3 +126,8 @@ class AgentIconGenerationResponse(BaseModel):
     icon_background: str
 
 
+class AgentFromTemplateRequest(BaseModel):
+    """Request model for creating an agent from a template."""
+    name: Optional[str] = None  # Optional, defaults to template name
+
+

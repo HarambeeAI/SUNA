@@ -19,6 +19,7 @@ from .agents import (
     AgentImportRequest,
     AgentIconGenerationRequest,
     AgentIconGenerationResponse,
+    AgentFromTemplateRequest,
 )
 
 from .threads import (
@@ -86,7 +87,7 @@ from .org_billing import (
 __all__ = [
     # Agent models
     "AgentCreateRequest",
-    "AgentUpdateRequest", 
+    "AgentUpdateRequest",
     "AgentResponse",
     "AgentVersionResponse",
     "AgentVersionCreateRequest",
@@ -95,6 +96,7 @@ __all__ = [
     "AgentImportRequest",
     "AgentIconGenerationRequest",
     "AgentIconGenerationResponse",
+    "AgentFromTemplateRequest",
     
     # Thread models
     "UnifiedAgentStartResponse",

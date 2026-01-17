@@ -167,12 +167,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a user, I want to instantiate agents from templates so I can quickly deploy pre-configured solutions.
 
 **Acceptance Criteria:**
-- [ ] POST `/v1/agents/from-template/:template_id` creates new agent
-- [ ] Copies system_prompt and tools_config from template
-- [ ] User can override agent name in request body
-- [ ] Validate user hasn't exceeded their plan's agent limit
-- [ ] Track template usage: increment `times_used` counter on template
-- [ ] Typecheck passes
+- [x] POST `/v1/agents/from-template/:template_id` creates new agent
+- [x] Copies system_prompt and tools_config from template
+- [x] User can override agent name in request body
+- [x] Validate user hasn't exceeded their plan's agent limit
+- [x] Track template usage: increment `times_used` counter on template
+- [x] Typecheck passes
 
 ### US-015: Seed initial agent templates
 **Description:** As a product manager, I need high-quality starter templates so users see immediate value.

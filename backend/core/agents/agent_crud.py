@@ -9,8 +9,9 @@ from core.utils.core_tools_helper import ensure_core_tools_enabled
 from core.ai_models import model_manager
 
 from core.api_models import (
-    AgentUpdateRequest, AgentResponse, AgentVersionResponse, AgentsResponse, 
-    PaginationInfo, AgentCreateRequest, AgentIconGenerationRequest, AgentIconGenerationResponse
+    AgentUpdateRequest, AgentResponse, AgentVersionResponse, AgentsResponse,
+    PaginationInfo, AgentCreateRequest, AgentIconGenerationRequest, AgentIconGenerationResponse,
+    AgentFromTemplateRequest
 )
 from core.services.supabase import DBConnection
 
@@ -699,23 +700,179 @@ async def generate_agent_icon(
 ):
     """Generate an appropriate icon and colors for an agent based on its name."""
     logger.debug(f"Generating icon and colors for agent: {request.name}")
-    
+
     try:
         from core.utils.icon_generator import generate_icon_and_colors as generate_agent_icon_and_colors
-        
+
         result = await generate_agent_icon_and_colors(
             name=request.name
         )
-        
+
         response = AgentIconGenerationResponse(
             icon_name=result["icon_name"],
             icon_color=result["icon_color"],
             icon_background=result["icon_background"]
         )
-        
+
         logger.debug(f"Generated agent icon: {response.icon_name}, colors: {response.icon_color}/{response.icon_background}")
         return response
-        
+
     except Exception as e:
         logger.error(f"Error generating agent icon for user {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to generate agent icon: {str(e)}")
+
+
+@router.post("/agents/from-template/{template_id}", response_model=AgentResponse, summary="Create Agent from Template", operation_id="create_agent_from_template")
+async def create_agent_from_template(
+    template_id: str,
+    request: Request,
+    body: AgentFromTemplateRequest = None,
+    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+):
+    """
+    Create a new agent from a template.
+
+    This endpoint creates an agent using the system_prompt and tools_config from the
+    specified template. The user can optionally override the agent name in the request body.
+    """
+    from core.agents import repo as agents_repo
+    from core.organizations import auth_context_repo, check_org_agent_limit, increment_org_agent_usage
+    from core.templates.template_service import get_template_service, TemplateAccessDeniedError
+
+    logger.debug(f"Creating agent from template {template_id} for user: {user_id}")
+    client = await db.client
+
+    # Get the template
+    template_service = get_template_service(db)
+    template = await template_service.get_template(template_id)
+
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    # Validate access (template must be public or owned by user)
+    if template.creator_id != user_id and not template.is_public:
+        raise HTTPException(status_code=403, detail="Access denied to template")
+
+    # Get active organization context
+    org_id = await auth_context_repo.get_user_active_org_id(user_id)
+
+    # Check limits based on context (org vs personal workspace)
+    if org_id:
+        # Organization context: check org plan limits
+        limit_check = await check_org_agent_limit(org_id)
+        if not limit_check['can_create']:
+            logger.warning(
+                f"Org agent limit exceeded: org_id={org_id} "
+                f"usage={limit_check['current_count']}/{limit_check['limit']}"
+            )
+            raise HTTPException(status_code=402, detail=limit_check['error_response'])
+    else:
+        # Personal workspace: use existing account-based limits
+        from core.utils.limits_checker import check_agent_count_limit
+        limit_check = await check_agent_count_limit(user_id)
+
+        if not limit_check['can_create']:
+            error_detail = {
+                "message": f"Maximum of {limit_check['limit']} agents allowed for your current plan. You have {limit_check['current_count']} agents.",
+                "current_count": limit_check['current_count'],
+                "limit": limit_check['limit'],
+                "tier_name": limit_check['tier_name'],
+                "error_code": "AGENT_LIMIT_EXCEEDED"
+            }
+            logger.warning(f"Agent limit exceeded for account {user_id}: {limit_check['current_count']}/{limit_check['limit']} agents")
+            raise HTTPException(status_code=402, detail=error_detail)
+
+    try:
+        # Determine agent name (use override or default to template name)
+        agent_name = body.name if body and body.name else template.name
+
+        # Create agent with template icon/colors
+        agent = await agents_repo.create_agent(
+            account_id=user_id,
+            name=agent_name,
+            icon_name=template.icon_name or "bot",
+            icon_color=template.icon_color or "#000000",
+            icon_background=template.icon_background or "#F3F4F6",
+            is_default=False,
+            metadata={
+                'created_from_template': template.template_id,
+                'template_name': template.name
+            },
+            org_id=org_id
+        )
+
+        # Increment org usage if in organization context
+        if org_id:
+            try:
+                await increment_org_agent_usage(org_id)
+            except Exception as e:
+                logger.warning(f"Failed to increment org agent usage: {e}")
+
+        if not agent:
+            raise HTTPException(status_code=500, detail="Failed to create agent")
+
+        # Create initial version with template's system_prompt and tools_config
+        try:
+            version_service = await _get_version_service()
+
+            # Extract config from template
+            system_prompt = template.system_prompt
+            agentpress_tools = template.agentpress_tools or {}
+            agentpress_tools = ensure_core_tools_enabled(agentpress_tools)
+
+            # Get configured_mcps and custom_mcps from template config
+            tools_config = template.config.get('tools', {})
+            configured_mcps = tools_config.get('mcp', [])
+            custom_mcps = tools_config.get('custom_mcp', [])
+            model = template.config.get('model')
+
+            # Get default model if not set
+            if not model:
+                model = await model_manager.get_default_model_for_user(client, user_id)
+
+            version = await version_service.create_version(
+                agent_id=agent['agent_id'],
+                user_id=user_id,
+                system_prompt=system_prompt,
+                model=model,
+                configured_mcps=configured_mcps,
+                custom_mcps=custom_mcps,
+                agentpress_tools=agentpress_tools,
+                version_name="v1",
+                change_description="Initial version from template"
+            )
+
+            agent['current_version_id'] = version.version_id
+            agent['version_count'] = 1
+
+        except Exception as e:
+            logger.error(f"Error creating initial version from template: {str(e)}")
+            # Rollback agent creation
+            await agents_repo.delete_agent(agent['agent_id'], user_id)
+            raise HTTPException(status_code=500, detail="Failed to create initial version from template")
+
+        # Track template usage (increment times_used/download_count counter)
+        try:
+            await template_service.increment_download_count(template_id)
+            logger.debug(f"Incremented download_count for template {template_id}")
+        except Exception as e:
+            logger.warning(f"Failed to increment template download count: {e}")
+
+        # Invalidate cache
+        from core.utils.cache import Cache
+        await Cache.invalidate(f"agent_count_limit:{user_id}")
+
+        logger.debug(f"Created agent {agent['agent_id']} from template {template_id} for user: {user_id}")
+
+        # Load the created agent with full config
+        from .agent_loader import get_agent_loader
+        loader = await get_agent_loader()
+        agent_data = await loader.load_agent(agent['agent_id'], user_id, load_config=True)
+
+        return agent_data.to_pydantic_model()
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating agent from template for user {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create agent from template: {str(e)}")
