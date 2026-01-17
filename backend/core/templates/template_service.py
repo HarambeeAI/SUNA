@@ -298,30 +298,41 @@ class TemplateService:
         limit: Optional[int] = None,
         offset: int = 0,
         search: Optional[str] = None,
-        tags: Optional[List[str]] = None
+        tags: Optional[List[str]] = None,
+        category: Optional[str] = None
     ) -> List[AgentTemplate]:
         client = await self._db.client
-        
+
         query = client.table('agent_templates').select('*').eq('is_public', True)
-        
+
         if is_kortix_team is not None:
             query = query.eq('is_kortix_team', is_kortix_team)
-        
+
         if search:
             query = query.ilike("name", f"%{search}%")
-        
+
         if tags:
             for tag in tags:
                 query = query.contains('tags', [tag])
-        
+
+        # Filter by category (using category_id from template_categories table)
+        if category:
+            # First get the category ID from the slug
+            cat_result = await client.table('template_categories').select('id').eq('slug', category).maybe_single().execute()
+            if cat_result.data:
+                query = query.eq('category_id', cat_result.data['id'])
+            else:
+                # Category not found, return empty list
+                return []
+
         query = query.order('download_count', desc=True)\
                     .order('marketplace_published_at', desc=True)
-        
+
         if limit:
             query = query.limit(limit)
         if offset:
             query = query.offset(offset)
-        
+
         result = await query.execute()
         
         if not result.data:

@@ -11,6 +11,7 @@ class MarketplaceFilters:
         tags: Optional[List[str]] = None,
         is_kortix_team: Optional[bool] = None,
         creator_id: Optional[str] = None,
+        category: Optional[str] = None,
         sort_by: str = "download_count",
         sort_order: str = "desc"
     ):
@@ -18,6 +19,7 @@ class MarketplaceFilters:
         self.tags = tags or []
         self.is_kortix_team = is_kortix_team
         self.creator_id = creator_id
+        self.category = category  # Category slug for filtering
         self.sort_by = sort_by
         self.sort_order = sort_order
 
@@ -45,16 +47,23 @@ class MarketplaceService:
             limit = pagination_params.page_size
             offset = (pagination_params.page - 1) * pagination_params.page_size
             
+            # Resolve category slug to category_id for query building
+            category_id = None
+            if filters.category:
+                cat_result = await self.db.table('template_categories').select('id').eq('slug', filters.category).maybe_single().execute()
+                if cat_result.data:
+                    category_id = cat_result.data['id']
+
             templates = await template_service.get_public_templates(
                 is_kortix_team=filters.is_kortix_team,
                 limit=limit,
                 offset=offset,
                 search=filters.search,
-                tags=filters.tags
+                tags=filters.tags,
+                category=filters.category
             )
-            
-            base_query = self._build_marketplace_base_query(filters)
-            count_query = self._build_marketplace_count_query(filters)
+
+            count_query = self._build_marketplace_count_query(filters, category_id=category_id)
             count_result = await count_query.execute()
             total_items = count_result.count if count_result.count is not None else 0
             
@@ -178,23 +187,27 @@ class MarketplaceService:
             logger.error(f"Error fetching user templates: {error_str}")
             raise
 
-    def _build_marketplace_base_query(self, filters: MarketplaceFilters):
+    def _build_marketplace_base_query(self, filters: MarketplaceFilters, category_id: Optional[str] = None):
         query = self.db.table('agent_templates').select('*').eq('is_public', True)
-        
+
         if filters.search:
             search_term = f"%{filters.search}%"
             query = query.ilike("name", search_term)
-        
+
         if filters.is_kortix_team is not None:
             query = query.eq('is_kortix_team', filters.is_kortix_team)
-            
+
         if filters.creator_id is not None:
             query = query.eq('creator_id', filters.creator_id)
-        
+
         if filters.tags:
             for tag in filters.tags:
                 query = query.contains('tags', [tag])
-        
+
+        # Filter by category_id (resolved from category slug)
+        if category_id is not None:
+            query = query.eq('category_id', category_id)
+
         if filters.sort_by == "download_count":
             query = query.order('download_count', desc=(filters.sort_order == "desc"))
             query = query.order('marketplace_published_at', desc=True)
@@ -205,26 +218,30 @@ class MarketplaceService:
         else:
             query = query.order('download_count', desc=True)
             query = query.order('marketplace_published_at', desc=True)
-        
+
         return query
 
-    def _build_marketplace_count_query(self, filters: MarketplaceFilters):
+    def _build_marketplace_count_query(self, filters: MarketplaceFilters, category_id: Optional[str] = None):
         query = self.db.table('agent_templates').select('*', count='exact').eq('is_public', True)
-        
+
         if filters.search:
             search_term = f"%{filters.search}%"
             query = query.ilike("name", search_term)
-        
+
         if filters.is_kortix_team is not None:
             query = query.eq('is_kortix_team', filters.is_kortix_team)
-            
+
         if filters.creator_id is not None:
             query = query.eq('creator_id', filters.creator_id)
-            
+
         if filters.tags:
             for tag in filters.tags:
                 query = query.contains('tags', [tag])
-                
+
+        # Filter by category_id (resolved from category slug)
+        if category_id is not None:
+            query = query.eq('category_id', category_id)
+
         return query
 
     def _build_user_templates_base_query(self, filters: MarketplaceFilters):

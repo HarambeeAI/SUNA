@@ -502,3 +502,59 @@
   - Building2 icon for organizations, User icon for personal workspace
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 16 - US-012: Agent template schema and storage
+- What was implemented:
+  - Database migration 20260117200000_template_categories_and_versioning.sql:
+    - Created template_categories table: id, name, slug, description, icon, sort_order, is_active, timestamps
+    - Added category_id FK column to existing agent_templates table
+    - Added template_version (int) and version_notes (text) columns for versioning
+    - Seeded 5 initial categories: Customer Service, Sales, Research, Content Creation, Data Analysis
+    - Added RLS policies: read-only for authenticated/anon, write via service_role only
+    - Created helper functions: get_template_categories, get_template_category_by_slug, get_templates_by_category, increment_template_version
+  - TypeScript types (apps/mobile/api/types.ts):
+    - TemplateCategory, AgentTemplateConfig, AgentTemplate, AgentTemplateWithCategory
+    - TemplateCategoriesResponse, AgentTemplatesResponse, AgentTemplatesParams
+  - Frontend API client (apps/frontend/src/lib/api/templates.ts):
+    - Types matching mobile types
+    - getTemplateCategories, getTemplateCategoryBySlug
+    - getTemplates, getTemplatesByCategory, getTemplate, createTemplate, updateTemplate, deleteTemplate, searchTemplates
+- Files changed:
+  - backend/supabase/migrations/20260117200000_template_categories_and_versioning.sql (new)
+  - apps/mobile/api/types.ts (modified - added template and category types)
+  - apps/frontend/src/lib/api/templates.ts (new)
+  - PRD.md (marked US-012 as complete)
+- Learnings for future iterations:
+  - agent_templates table already exists with: template_id, creator_id, name, description, config (JSONB), tags, is_public, is_kortix_team, download_count, marketplace_published_at, usage_examples, timestamps
+  - config JSONB structure: { system_prompt, tools: { agentpress, mcp, custom_mcp }, metadata: { avatar, avatar_color, template_metadata } }
+  - Categories use icon names (e.g., 'headphones', 'briefcase') for UI flexibility
+  - Template versioning uses simple integer with optional notes, not complex version history table
+  - Category management is admin-only (service_role) - no user endpoint needed for CRUD
+---
+
+## Iteration 17 - US-013: Agent template creation API
+- What was implemented:
+  - Added GET /v1/templates/categories endpoint for listing template categories
+  - Added GET /v1/templates/categories/{slug} endpoint for getting category by slug
+  - Added GET /v1/templates root endpoint for paginated public templates with filtering
+  - Added POST /v1/templates/direct endpoint for creating templates directly (not from agent)
+  - Added PATCH /v1/templates/{template_id} endpoint for updating templates (creator only)
+  - Added category filter support (?category=sales) to template listing endpoints
+  - Search templates by name already existed via ?search=customer
+  - Updated MarketplaceFilters and MarketplaceService to support category filtering
+  - Updated template_service.get_public_templates to support category filtering
+  - Version incrementing on public template updates
+- Files changed:
+  - backend/core/templates/api.py (modified - added category endpoints, root GET, direct POST, PATCH update)
+  - backend/core/templates/template_service.py (modified - added category param to get_public_templates)
+  - backend/core/templates/services/marketplace_service.py (modified - added category filtering support)
+  - PRD.md (marked US-013 as complete)
+- Learnings for future iterations:
+  - FastAPI route ordering matters: specific routes like /categories must come before parameterized /{template_id}
+  - Template categories are stored in template_categories table, linked via category_id FK
+  - Category filtering requires resolving slug to category_id before querying
+  - MarketplaceFilters is the shared filter class used by marketplace_service
+  - Use template_service for actual DB queries, marketplace_service for pagination/formatting
+  - Public templates can be updated, which increments template_version
+  - Direct template creation (POST /direct) bypasses the agent-based creation flow
+---

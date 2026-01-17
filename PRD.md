@@ -155,13 +155,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a backend developer, I need API endpoints for template management so we can build the marketplace.
 
 **Acceptance Criteria:**
-- [ ] POST `/v1/templates` creates new agent template
-- [ ] GET `/v1/templates` returns paginated public templates
-- [ ] GET `/v1/templates/:id` returns template details
-- [ ] PATCH `/v1/templates/:id` updates template (creator only)
-- [ ] Filter by category via query param `?category=sales`
-- [ ] Search templates by name/description via `?search=customer`
-- [ ] Typecheck passes
+- [x] POST `/v1/templates` creates new agent template
+- [x] GET `/v1/templates` returns paginated public templates
+- [x] GET `/v1/templates/:id` returns template details
+- [x] PATCH `/v1/templates/:id` updates template (creator only)
+- [x] Filter by category via query param `?category=sales`
+- [x] Search templates by name/description via `?search=customer`
+- [x] Typecheck passes
 
 ### US-014: Create agent from template endpoint
 **Description:** As a user, I want to instantiate agents from templates so I can quickly deploy pre-configured solutions.

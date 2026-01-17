@@ -53,6 +53,46 @@ class PublishTemplateRequest(BaseModel):
     usage_examples: Optional[List[UsageExampleMessage]] = None
 
 
+class DirectTemplateCreateRequest(BaseModel):
+    """Request model for creating a template directly (not from an agent)."""
+    name: str
+    description: Optional[str] = None
+    config: Dict[str, Any]
+    category_id: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_public: bool = False
+    usage_examples: Optional[List[UsageExampleMessage]] = None
+
+
+class TemplateUpdateRequest(BaseModel):
+    """Request model for updating an existing template."""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    config: Optional[Dict[str, Any]] = None
+    category_id: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_public: Optional[bool] = None
+    version_notes: Optional[str] = None
+
+
+class TemplateCategoryResponse(BaseModel):
+    """Response model for a template category."""
+    id: str
+    name: str
+    slug: str
+    description: Optional[str] = None
+    icon: Optional[str] = None
+    sort_order: int
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
+class TemplateCategoriesListResponse(BaseModel):
+    """Response model for a list of template categories."""
+    categories: List[TemplateCategoryResponse]
+
+
 class TemplateResponse(BaseModel):
     template_id: str
     creator_id: str
@@ -90,6 +130,168 @@ def initialize(database: DBConnection):
     global db
     db = database
 
+
+# ============================================================================
+# CATEGORY ENDPOINTS (must come before parameterized routes)
+# ============================================================================
+
+@router.get("/categories", response_model=TemplateCategoriesListResponse)
+async def get_template_categories():
+    """
+    Get all active template categories.
+
+    Returns a list of categories that can be used to filter templates.
+    """
+    try:
+        client = await db.client
+        result = await client.rpc('get_template_categories').execute()
+
+        if not result.data:
+            return TemplateCategoriesListResponse(categories=[])
+
+        categories = []
+        for cat in result.data:
+            categories.append(TemplateCategoryResponse(
+                id=str(cat['id']),
+                name=cat['name'],
+                slug=cat['slug'],
+                description=cat.get('description'),
+                icon=cat.get('icon'),
+                sort_order=cat.get('sort_order', 0),
+                is_active=cat.get('is_active', True),
+                created_at=cat['created_at'],
+                updated_at=cat['updated_at']
+            ))
+
+        return TemplateCategoriesListResponse(categories=categories)
+
+    except Exception as e:
+        try:
+            error_str = str(e)
+        except Exception:
+            error_str = f"Error of type {type(e).__name__}"
+        logger.error(f"Error getting template categories: {error_str}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/categories/{slug}", response_model=TemplateCategoryResponse)
+async def get_template_category_by_slug(slug: str):
+    """
+    Get a template category by its slug.
+
+    Args:
+        slug: The category slug (e.g., 'customer-service', 'sales')
+    """
+    try:
+        client = await db.client
+        result = await client.rpc('get_template_category_by_slug', {'p_slug': slug}).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Category not found")
+
+        cat = result.data
+        return TemplateCategoryResponse(
+            id=str(cat['id']),
+            name=cat['name'],
+            slug=cat['slug'],
+            description=cat.get('description'),
+            icon=cat.get('icon'),
+            sort_order=cat.get('sort_order', 0),
+            is_active=cat.get('is_active', True),
+            created_at=cat['created_at'],
+            updated_at=cat['updated_at']
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            error_str = str(e)
+        except Exception:
+            error_str = f"Error of type {type(e).__name__}"
+        logger.error(f"Error getting template category by slug {slug}: {error_str}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ============================================================================
+# ROOT TEMPLATES ENDPOINT
+# ============================================================================
+
+@router.get("", response_model=MarketplaceTemplatesResponse)
+async def get_templates(
+    page: Optional[int] = Query(1, ge=1, description="Page number (1-based)"),
+    limit: Optional[int] = Query(20, ge=1, le=100, description="Number of items per page"),
+    search: Optional[str] = Query(None, description="Search term for name/description"),
+    tags: Optional[str] = Query(None, description="Comma-separated list of tags to filter by"),
+    category: Optional[str] = Query(None, description="Category slug to filter by (e.g., 'sales', 'customer-service')"),
+    is_kortix_team: Optional[bool] = Query(None, description="Filter for Kortix team templates"),
+    sort_by: Optional[str] = Query("download_count", description="Sort field: download_count, newest, name"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc, desc"),
+):
+    """
+    Get paginated public templates with optional filtering.
+
+    This is the main endpoint for listing templates in the marketplace.
+    Supports filtering by category, tags, search term, and sorting.
+    """
+    try:
+        from core.templates.services.marketplace_service import MarketplaceService, MarketplaceFilters
+
+        tags_list = []
+        if tags:
+            if isinstance(tags, str):
+                tags_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+
+        pagination_params = PaginationParams(
+            page=page,
+            page_size=limit
+        )
+
+        filters = MarketplaceFilters(
+            search=search,
+            tags=tags_list,
+            is_kortix_team=is_kortix_team,
+            category=category,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+
+        client = await db.client
+        marketplace_service = MarketplaceService(client)
+        paginated_result = await marketplace_service.get_marketplace_templates_paginated(
+            pagination_params=pagination_params,
+            filters=filters
+        )
+
+        template_responses = []
+        for template_data in paginated_result.data:
+            template_response = TemplateResponse(**template_data)
+            template_responses.append(template_response)
+
+        return MarketplaceTemplatesResponse(
+            templates=template_responses,
+            pagination=MarketplacePaginationInfo(
+                current_page=paginated_result.pagination.current_page,
+                page_size=paginated_result.pagination.page_size,
+                total_items=paginated_result.pagination.total_items,
+                total_pages=paginated_result.pagination.total_pages,
+                has_next=paginated_result.pagination.has_next,
+                has_previous=paginated_result.pagination.has_previous
+            )
+        )
+
+    except Exception as e:
+        try:
+            error_str = str(e)
+        except Exception:
+            error_str = f"Error of type {type(e).__name__}"
+        logger.error(f"Error getting templates: {error_str}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# ============================================================================
+# VALIDATION HELPERS
+# ============================================================================
 
 async def validate_template_ownership_and_get(template_id: str, user_id: str) -> AgentTemplate:
     template_service = get_template_service(db)
@@ -162,7 +364,7 @@ async def create_template_from_agent(
         
         logger.debug(f"Successfully created template {template_id} from agent {request.agent_id}")
         return {"template_id": template_id}
-        
+
     except HTTPException:
         raise
     except TemplateNotFoundError as e:
@@ -180,6 +382,80 @@ async def create_template_from_agent(
         except Exception:
             error_str = f"Error of type {type(e).__name__}"
         logger.error(f"Error creating template from agent {request.agent_id}: {error_str}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/direct", response_model=TemplateResponse)
+async def create_template_direct(
+    request: DirectTemplateCreateRequest,
+    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+):
+    """
+    Create a new template directly (not from an existing agent).
+
+    This endpoint allows creating a template with a custom configuration,
+    system prompt, and settings without needing an existing agent.
+    """
+    try:
+        logger.debug(f"User {user_id} creating direct template: {request.name}")
+
+        client = await db.client
+
+        # Generate template ID
+        from uuid import uuid4
+        template_id = str(uuid4())
+
+        # Prepare usage examples if provided
+        usage_examples = None
+        if request.usage_examples:
+            usage_examples = [msg.dict() for msg in request.usage_examples]
+
+        # Prepare template data
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+
+        template_data = {
+            'template_id': template_id,
+            'creator_id': user_id,
+            'name': request.name,
+            'description': request.description,
+            'config': request.config,
+            'category_id': request.category_id,
+            'tags': request.tags or [],
+            'categories': [],  # Legacy field, kept for compatibility
+            'is_public': request.is_public,
+            'marketplace_published_at': now if request.is_public else None,
+            'download_count': 0,
+            'template_version': 1,
+            'created_at': now,
+            'updated_at': now,
+            'usage_examples': usage_examples or []
+        }
+
+        # Insert the template
+        result = await client.table('agent_templates').insert(template_data).execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create template")
+
+        # Fetch and return the created template
+        template_service = get_template_service(db)
+        created_template = await template_service.get_template(template_id)
+
+        if not created_template:
+            raise HTTPException(status_code=500, detail="Failed to retrieve created template")
+
+        logger.debug(f"Successfully created direct template {template_id}")
+        return TemplateResponse(**format_template_for_response(created_template))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            error_str = str(e)
+        except Exception:
+            error_str = f"Error of type {type(e).__name__}"
+        logger.error(f"Error creating direct template: {error_str}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -253,6 +529,91 @@ async def unpublish_template(
         except Exception:
             error_str = f"Error of type {type(e).__name__}"
         logger.error(f"Error unpublishing template {template_id}: {error_str}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/{template_id}", response_model=TemplateResponse)
+async def update_template(
+    template_id: str,
+    request: TemplateUpdateRequest,
+    user_id: str = Depends(verify_and_get_user_id_from_jwt)
+):
+    """
+    Update an existing template.
+
+    Only the template creator can update their template.
+    If the template is already public, updating it will increment the version number.
+    """
+    try:
+        template = await validate_template_ownership_and_get(template_id, user_id)
+
+        logger.debug(f"User {user_id} updating template {template_id}")
+
+        client = await db.client
+
+        # Build update data
+        update_data = {}
+        if request.name is not None:
+            update_data['name'] = request.name
+        if request.description is not None:
+            update_data['description'] = request.description
+        if request.config is not None:
+            update_data['config'] = request.config
+        if request.category_id is not None:
+            update_data['category_id'] = request.category_id
+        if request.tags is not None:
+            update_data['tags'] = request.tags
+        if request.is_public is not None:
+            update_data['is_public'] = request.is_public
+            if request.is_public and not template.is_public:
+                # Publishing for the first time
+                from datetime import datetime, timezone
+                update_data['marketplace_published_at'] = datetime.now(timezone.utc).isoformat()
+
+        if not update_data:
+            # No changes requested, return current template
+            return TemplateResponse(**format_template_for_response(template))
+
+        # If the template is public and we're making content changes, increment version
+        content_change_fields = {'name', 'description', 'config', 'tags'}
+        if template.is_public and content_change_fields.intersection(update_data.keys()):
+            # Increment version and add notes
+            version_notes = request.version_notes or "Template updated"
+            await client.rpc('increment_template_version', {
+                'p_template_id': template_id,
+                'p_version_notes': version_notes
+            }).execute()
+
+        # Update the template
+        from datetime import datetime, timezone
+        update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+
+        result = await client.table('agent_templates').update(update_data)\
+            .eq('template_id', template_id)\
+            .eq('creator_id', user_id)\
+            .execute()
+
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update template")
+
+        # Fetch and return the updated template
+        template_service = get_template_service(db)
+        updated_template = await template_service.get_template(template_id)
+
+        if not updated_template:
+            raise HTTPException(status_code=500, detail="Failed to retrieve updated template")
+
+        logger.debug(f"Successfully updated template {template_id}")
+        return TemplateResponse(**format_template_for_response(updated_template))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            error_str = str(e)
+        except Exception:
+            error_str = f"Error of type {type(e).__name__}"
+        logger.error(f"Error updating template {template_id}: {error_str}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -426,8 +787,9 @@ async def get_all_kortix_templates(
 async def get_marketplace_templates(
     page: Optional[int] = Query(1, ge=1, description="Page number (1-based)"),
     limit: Optional[int] = Query(20, ge=1, le=100, description="Number of items per page"),
-    search: Optional[str] = Query(None, description="Search term for name"),
+    search: Optional[str] = Query(None, description="Search term for name/description"),
     tags: Optional[str] = Query(None, description="Comma-separated list of tags to filter by"),
+    category: Optional[str] = Query(None, description="Category slug to filter by (e.g., 'sales', 'customer-service')"),
     is_kortix_team: Optional[bool] = Query(None, description="Filter for Kortix team templates"),
     mine: Optional[bool] = Query(None, description="Filter to show only user's own templates"),
     sort_by: Optional[str] = Query("download_count", description="Sort field: download_count, newest, name"),
@@ -460,6 +822,7 @@ async def get_marketplace_templates(
             tags=tags_list,
             is_kortix_team=is_kortix_team,
             creator_id=creator_id_filter,
+            category=category,
             sort_by=sort_by,
             sort_order=sort_order
         )
