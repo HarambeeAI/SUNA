@@ -127,7 +127,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Remove member button with confirmation dialog
 - [x] Show pending invitations with option to resend or revoke
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-011: Organization switcher in navigation
 **Description:** As a user with multiple organizations, I want to switch between them so I can access different workspaces.
