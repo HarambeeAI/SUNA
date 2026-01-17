@@ -118,6 +118,19 @@ from .template_submissions import (
     TemplateSubmissionStatsResponse,
 )
 
+from .agent_analytics import (
+    AgentPerformanceStats,
+    AgentRunTimelinePoint,
+    AgentRunsTimelineResponse,
+    SlowToolStats,
+    SlowestToolsResponse,
+    AgentRunLogEntry,
+    AgentRunLogsExport,
+    ToolExecutionDetail,
+    ToolExecutionsResponse,
+    AgentAnalyticsDashboard,
+)
+
 
 __all__ = [
     # Agent models
@@ -221,4 +234,16 @@ __all__ = [
     "ApproveSubmissionRequest",
     "RejectSubmissionRequest",
     "TemplateSubmissionStatsResponse",
+
+    # Agent analytics models (US-029)
+    "AgentPerformanceStats",
+    "AgentRunTimelinePoint",
+    "AgentRunsTimelineResponse",
+    "SlowToolStats",
+    "SlowestToolsResponse",
+    "AgentRunLogEntry",
+    "AgentRunLogsExport",
+    "ToolExecutionDetail",
+    "ToolExecutionsResponse",
+    "AgentAnalyticsDashboard",
 ]

@@ -351,12 +351,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization admin, I want to see agent performance metrics so I can optimize our workflows.
 
 **Acceptance Criteria:**
-- [ ] Per-agent analytics page: total runs, success rate, avg duration, cost
-- [ ] Success rate calculation: runs without errors / total runs
-- [ ] Chart: runs over time (last 30 days) with success/failure breakdown
-- [ ] Table: slowest tool executions (identify bottlenecks)
-- [ ] Export agent run logs as JSON for debugging
-- [ ] Typecheck passes
+- [x] Per-agent analytics page: total runs, success rate, avg duration, cost
+- [x] Success rate calculation: runs without errors / total runs
+- [x] Chart: runs over time (last 30 days) with success/failure breakdown
+- [x] Table: slowest tool executions (identify bottlenecks)
+- [x] Export agent run logs as JSON for debugging
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-030: API key management for programmatic access

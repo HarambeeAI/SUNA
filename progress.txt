@@ -1220,3 +1220,71 @@
   - User suspension is a soft-delete pattern with is_active flag for audit trail
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 29 - US-029: Agent performance monitoring
+- What was implemented:
+  - Database migration 20260118400000_agent_run_tool_executions.sql:
+    - Created agent_run_tool_executions table for granular tool execution tracking
+    - Tracks: tool_name, duration_ms, status, error_message, input/output summaries
+    - Indexes for efficient analytics queries
+    - RLS policies for user/org access control
+    - SQL helper functions: get_agent_performance_stats, get_agent_runs_timeline, get_agent_slowest_tools, track_tool_execution
+  - Backend: Created API models (backend/core/api_models/agent_analytics.py):
+    - AgentPerformanceStats: total runs, success rate, avg duration, cost, tokens
+    - AgentRunTimelinePoint, AgentRunsTimelineResponse: chart data
+    - SlowToolStats, SlowestToolsResponse: tool bottleneck data
+    - AgentRunLogEntry, AgentRunLogsExport: JSON export format
+    - ToolExecutionDetail, ToolExecutionsResponse: detailed tool records
+    - AgentAnalyticsDashboard: combined dashboard response
+  - Backend: Created repository functions (backend/core/agents/agent_analytics_repo.py):
+    - get_agent_performance_stats: success rate, duration, cost aggregations
+    - get_agent_runs_timeline: daily run counts with success/failure breakdown
+    - get_agent_slowest_tools: tool execution stats sorted by avg duration
+    - get_agent_run_logs: detailed run logs for export
+    - get_tool_executions_for_agent: individual tool execution records
+    - verify_agent_access: permission check for analytics access
+  - Backend: Created API endpoints (backend/core/agents/agent_analytics_api.py):
+    - GET /agents/{agent_id}/analytics - full dashboard data
+    - GET /agents/{agent_id}/analytics/stats - performance stats only
+    - GET /agents/{agent_id}/analytics/timeline - timeline chart data
+    - GET /agents/{agent_id}/analytics/tools - slowest tools data
+    - GET /agents/{agent_id}/analytics/logs/export - JSON export
+    - GET /agents/{agent_id}/analytics/tool-executions - detailed tool records
+  - Frontend: Created API client (apps/frontend/src/lib/api/agent-analytics.ts):
+    - TypeScript types for all analytics data
+    - API functions: getAgentAnalyticsDashboard, getAgentStats, getAgentRunsTimeline
+    - getAgentSlowestTools, exportAgentRunLogs, getToolExecutions
+    - downloadAgentRunLogs helper for JSON file download
+  - Frontend: Created analytics screen (apps/frontend/src/app/(dashboard)/agents/config/[agentId]/screens/analytics-screen.tsx):
+    - Stats cards: Total Runs, Success Rate (color-coded), Avg Duration, Total Cost
+    - Line chart: runs over time with success/failure/stopped breakdown (recharts)
+    - Bar chart: slowest tools by average execution time
+    - Table: detailed tool stats (executions, avg/max duration, errors)
+    - Export JSON button for run logs download
+    - Period selector (7/30/90 days)
+    - Alert banners for low success rate and slow tools
+  - Added Analytics tab to agent config page:
+    - New "Analytics" menu item with BarChart3 icon
+    - Integrated AnalyticsScreen component
+- Files changed:
+  - backend/supabase/migrations/20260118400000_agent_run_tool_executions.sql (new)
+  - backend/core/api_models/agent_analytics.py (new)
+  - backend/core/api_models/__init__.py (modified - exports analytics models)
+  - backend/core/agents/agent_analytics_repo.py (new)
+  - backend/core/agents/agent_analytics_api.py (new)
+  - backend/api.py (modified - includes agent_analytics_router)
+  - apps/frontend/src/lib/api/agent-analytics.ts (new)
+  - apps/frontend/src/app/(dashboard)/agents/config/[agentId]/screens/analytics-screen.tsx (new)
+  - apps/frontend/src/app/(dashboard)/agents/config/[agentId]/page.tsx (modified - added Analytics view)
+  - PRD.md (marked US-029 ACs as complete)
+- Learnings for future iterations:
+  - Agent analytics lives as a tab in agent config page (/agents/config/{agentId})
+  - Analytics requires agent access - verified via personal ownership or org membership
+  - Success rate = completed_runs / total_runs (excludes currently running)
+  - Tool execution tracking is granular - stored in separate agent_run_tool_executions table
+  - Use recharts for charts (LineChart, BarChart) - already in dependencies
+  - Export as JSON downloads to user's device via blob URL
+  - Period selector allows 7/30/90 day analysis windows
+  - Color-coded thresholds: success rate >=90 green, >=70 yellow, <70 red
+  - Browser verification still pending - requires manual testing
+---
