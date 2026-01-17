@@ -235,7 +235,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Agent settings modal has "Visibility" dropdown
 - [x] Default visibility: org for organization members, private for personal
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-020: Organization usage dashboard
 **Description:** As an organization owner, I want to see usage analytics so I can make informed decisions about our plan.
