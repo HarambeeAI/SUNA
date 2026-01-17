@@ -286,7 +286,8 @@ class AgentRunner:
             project_id=self.config.project_id,
             thread_id=self.config.thread_id,
             account_id=self.config.account_id,
-            jit_config=jit_config
+            jit_config=jit_config,
+            agent_run_id=self.config.agent_run_id  # US-024: For cost tracking
         )
         
         self.client = await self.thread_manager.db.client
@@ -847,7 +848,8 @@ async def execute_agent_run(
             agent_config=agent_config,
             trace=trace,
             account_id=account_id,
-            is_new_thread=is_new_thread
+            is_new_thread=is_new_thread,
+            agent_run_id=agent_run_id  # US-024: For cost tracking
         )
         
         runner = AgentRunner(runner_config)
@@ -930,9 +932,21 @@ async def execute_agent_run(
         
         if stop_state['reason']:
             final_status = "stopped"
-        
+
+        # US-024: Finalize cost tracking before updating status
+        try:
+            from core.agents.cost_tracking import finalize_cost_tracker
+            cost_summary = await finalize_cost_tracker(agent_run_id)
+            if cost_summary:
+                logger.info(
+                    f"💰 Agent run {agent_run_id} cost: ${cost_summary.get('total_cost_usd', 0):.6f} "
+                    f"({cost_summary.get('total_tokens', 0)} tokens)"
+                )
+        except Exception as cost_err:
+            logger.warning(f"Failed to finalize cost tracker for {agent_run_id}: {cost_err}")
+
         await update_agent_run_status(agent_run_id, final_status, error=error_message, account_id=account_id)
-        
+
         logger.info(f"✅ Agent run completed: {agent_run_id} | status={final_status}")
         
     except Exception as e:

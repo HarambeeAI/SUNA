@@ -290,12 +290,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform engineer, I need to calculate and track agent run costs so we can analyze unit economics.
 
 **Acceptance Criteria:**
-- [ ] Add `cost_usd` and `tokens_used` columns to `agent_runs` table
-- [ ] Calculate cost based on LLM provider pricing (OpenAI, Anthropic)
-- [ ] Store input_tokens, output_tokens, total_tokens separately
-- [ ] Track tool execution time and attribute costs
-- [ ] Organization usage dashboard shows total cost this month (for internal analytics)
-- [ ] Typecheck passes
+- [x] Add `cost_usd` and `tokens_used` columns to `agent_runs` table
+- [x] Calculate cost based on LLM provider pricing (OpenAI, Anthropic)
+- [x] Store input_tokens, output_tokens, total_tokens separately
+- [x] Track tool execution time and attribute costs
+- [x] Organization usage dashboard shows total cost this month (for internal analytics)
+- [x] Typecheck passes
 
 ### US-025: Rate limiting for free tier
 **Description:** As a platform engineer, I need to implement rate limiting so free tier users don't abuse the system.

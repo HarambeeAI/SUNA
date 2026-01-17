@@ -31,6 +31,13 @@ class DashboardStats(BaseModel):
     total_tokens_used: int = Field(default=0, description="Total tokens used this month")
     estimated_cost_cents: int = Field(default=0, description="Estimated cost in cents")
 
+    # US-024: Cost tracking from agent_runs
+    total_cost_usd: float = Field(default=0.0, description="Total cost in USD this month")
+    total_input_tokens: int = Field(default=0, description="Total input tokens this month")
+    total_output_tokens: int = Field(default=0, description="Total output tokens this month")
+    total_tokens: int = Field(default=0, description="Total tokens (input + output) this month")
+    total_tool_execution_ms: int = Field(default=0, description="Total tool execution time in milliseconds")
+
     # Billing period
     period_start: Optional[date] = None
     period_end: Optional[date] = None
@@ -112,6 +119,12 @@ class UsageExportRow(BaseModel):
     duration_seconds: Optional[float] = None
     error: Optional[str] = None
     model_name: Optional[str] = None
+    # US-024: Cost tracking fields
+    cost_usd: Optional[float] = Field(default=0.0, description="Cost in USD for this run")
+    input_tokens: Optional[int] = Field(default=0, description="Input tokens used")
+    output_tokens: Optional[int] = Field(default=0, description="Output tokens generated")
+    total_tokens: Optional[int] = Field(default=0, description="Total tokens used")
+    tool_execution_ms: Optional[int] = Field(default=0, description="Tool execution time in ms")
 
     class Config:
         from_attributes = True

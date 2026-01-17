@@ -18,6 +18,8 @@ async def get_org_dashboard_stats(org_id: str) -> Optional[Dict[str, Any]]:
         - total_agents: Total agents in the organization
         - active_agents: Agents used in the last 30 days
         - total_runs_month: Total runs this month
+        - total_cost_usd: Total cost in USD this month (US-024)
+        - total_tokens: Total tokens used this month (US-024)
         - usage with limits and percentages
     """
     sql = """
@@ -36,6 +38,18 @@ async def get_org_dashboard_stats(org_id: str) -> Optional[Dict[str, Any]]:
             END) as active_agents
         FROM agents a
         WHERE a.org_id = :org_id
+    ),
+    cost_summary AS (
+        -- US-024: Get cost and token totals from agent_runs for current month
+        SELECT
+            COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+            COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+            COALESCE(SUM(output_tokens), 0) as total_output_tokens,
+            COALESCE(SUM(total_tokens), 0) as total_tokens,
+            COALESCE(SUM(tool_execution_ms), 0) as total_tool_execution_ms
+        FROM agent_runs
+        WHERE org_id = :org_id
+        AND started_at >= date_trunc('month', CURRENT_DATE)
     ),
     usage_info AS (
         SELECT
@@ -74,6 +88,12 @@ async def get_org_dashboard_stats(org_id: str) -> Optional[Dict[str, Any]]:
         ui.estimated_cost_cents,
         ui.period_start,
         ui.period_end,
+        -- US-024: Include cost tracking from agent_runs
+        cs.total_cost_usd,
+        cs.total_input_tokens,
+        cs.total_output_tokens,
+        cs.total_tokens,
+        cs.total_tool_execution_ms,
         CASE
             WHEN ui.agent_limit IS NOT NULL AND ui.agent_limit > 0
             THEN ROUND((ac.total_agents::NUMERIC / ui.agent_limit) * 100, 1)
@@ -84,7 +104,7 @@ async def get_org_dashboard_stats(org_id: str) -> Optional[Dict[str, Any]]:
             THEN ROUND((ui.runs_executed::NUMERIC / ui.run_limit_monthly) * 100, 1)
             ELSE 0
         END as runs_percent
-    FROM agent_counts ac, usage_info ui
+    FROM agent_counts ac, usage_info ui, cost_summary cs
     """
 
     result = await execute_one_read(sql, {"org_id": org_id})
@@ -208,6 +228,7 @@ async def get_org_usage_export(org_id: str) -> List[Dict[str, Any]]:
     Get detailed usage data for CSV export.
 
     Returns all agent runs for the current billing period.
+    US-024: Includes cost and token data.
     """
     sql = """
     SELECT
@@ -219,7 +240,13 @@ async def get_org_usage_export(org_id: str) -> List[Dict[str, Any]]:
         ar.completed_at,
         EXTRACT(EPOCH FROM (ar.completed_at - ar.started_at)) as duration_seconds,
         ar.error,
-        ar.metadata->>'model_name' as model_name
+        ar.metadata->>'model_name' as model_name,
+        -- US-024: Include cost and token data
+        ar.cost_usd,
+        ar.input_tokens,
+        ar.output_tokens,
+        ar.total_tokens,
+        ar.tool_execution_ms
     FROM agent_runs ar
     LEFT JOIN agents a ON ar.agent_id = a.agent_id
     LEFT JOIN threads t ON ar.thread_id = t.thread_id

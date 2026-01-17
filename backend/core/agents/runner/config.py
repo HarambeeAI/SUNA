@@ -15,3 +15,4 @@ class AgentConfig:
     trace: Optional['StatefulTraceClient'] = None
     account_id: Optional[str] = None
     is_new_thread: bool = False
+    agent_run_id: Optional[str] = None  # US-024: For cost tracking

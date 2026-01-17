@@ -2389,6 +2389,8 @@ class ResponseProcessor:
     # Tool execution methods
     async def _execute_tool(self, tool_call: Dict[str, Any]) -> ToolResult:
         """Execute a single tool call and return the result."""
+        import time
+        start_time = time.monotonic()
         span = self.trace.span(name=f"execute_tool.{tool_call['function_name']}", input=tool_call["arguments"])
         function_name = "unknown"
         try:
@@ -2557,9 +2559,30 @@ class ResponseProcessor:
                     result = ToolResult(success=False, output=f"Tool returned invalid result type: {type(result)}")
 
             span.end(status_message="tool_executed", output=str(result))
+
+            # US-024: Track tool execution time for agent run cost tracking
+            duration_ms = int((time.monotonic() - start_time) * 1000)
+            if self.thread_manager and hasattr(self.thread_manager, 'agent_run_id') and self.thread_manager.agent_run_id:
+                try:
+                    from core.agents.cost_tracking import track_tool_execution
+                    import asyncio
+                    asyncio.create_task(track_tool_execution(self.thread_manager.agent_run_id, duration_ms))
+                except Exception as track_err:
+                    logger.debug(f"Failed to track tool execution time: {track_err}")
+
             return result
 
         except Exception as e:
+            # US-024: Track tool execution time even on error
+            duration_ms = int((time.monotonic() - start_time) * 1000)
+            if self.thread_manager and hasattr(self.thread_manager, 'agent_run_id') and self.thread_manager.agent_run_id:
+                try:
+                    from core.agents.cost_tracking import track_tool_execution
+                    import asyncio
+                    asyncio.create_task(track_tool_execution(self.thread_manager.agent_run_id, duration_ms))
+                except Exception:
+                    pass
+
             logger.error(f"❌ CRITICAL ERROR executing tool {function_name}: {str(e)}")
             logger.error(f"❌ Error type: {type(e).__name__}")
             logger.error(f"❌ Tool call data: {tool_call}")

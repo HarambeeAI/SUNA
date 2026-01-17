@@ -73,24 +73,25 @@ async def set_thread_has_images(thread_id: str, client=None) -> bool:
 
 
 class ThreadManager:
-    def __init__(self, trace: Optional[StatefulTraceClient] = None, agent_config: Optional[dict] = None, 
+    def __init__(self, trace: Optional[StatefulTraceClient] = None, agent_config: Optional[dict] = None,
                  project_id: Optional[str] = None, thread_id: Optional[str] = None, account_id: Optional[str] = None,
-                 jit_config: Optional['JITConfig'] = None):
+                 jit_config: Optional['JITConfig'] = None, agent_run_id: Optional[str] = None):
         self.db = DBConnection()
         self.tool_registry = ToolRegistry()
-        
+
         self.project_id = project_id
         self.thread_id = thread_id
         self.account_id = account_id
-        
+        self.agent_run_id = agent_run_id
+
         self.trace = trace
         if not self.trace:
             self.trace = langfuse.trace(name="anonymous:thread_manager")
-            
+
         self.agent_config = agent_config
-        
+
         self.jit_config = jit_config
-        
+
         self.response_processor = ResponseProcessor(
             tool_registry=self.tool_registry,
             add_message_callback=self.add_message,
@@ -100,7 +101,7 @@ class ThreadManager:
             thread_manager=self,
             project_id=self.project_id
         )
-        
+
         self._memory_context: Optional[Dict[str, Any]] = None
 
     def set_memory_context(self, memory_context: Optional[Dict[str, Any]]):
@@ -181,35 +182,35 @@ class ThreadManager:
         try:
             llm_response_id = content.get("llm_response_id", "unknown")
             logger.debug(f"💰 Processing billing for LLM response: {llm_response_id}")
-            
+
             usage = content.get("usage", {})
-            
+
             prompt_tokens = int(usage.get("prompt_tokens", 0) or 0)
             completion_tokens = int(usage.get("completion_tokens", 0) or 0)
             is_estimated = usage.get("estimated", False)
             is_fallback = usage.get("fallback", False)
-            
+
             cache_read_tokens = int(usage.get("cache_read_input_tokens", 0) or 0)
             if cache_read_tokens == 0:
                 # safely handle prompt_tokens_details that might be None
                 cache_read_tokens = int((usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0) or 0)
-            
+
             cache_creation_tokens = int(usage.get("cache_creation_input_tokens", 0) or 0)
             if cache_creation_tokens == 0:
                 # Check nested in prompt_tokens_details as fallback (though it's usually at top level)
                 cache_creation_tokens = int((usage.get("prompt_tokens_details") or {}).get("cache_creation_tokens", 0) or 0)
-            
+
             # Debug logging to verify cache_creation_tokens extraction
             if cache_creation_tokens > 0:
                 logger.debug(f"💾 CACHE CREATION TOKENS DETECTED: {cache_creation_tokens} tokens will be charged at cache write rates")
-            
+
             model = content.get("model")
-            
+
             usage_type = "FALLBACK ESTIMATE" if is_fallback else ("ESTIMATED" if is_estimated else "EXACT")
             logger.debug(f"💰 Usage type: {usage_type} - prompt={prompt_tokens}, completion={completion_tokens}, cache_read={cache_read_tokens}, cache_creation={cache_creation_tokens}")
-            
+
             user_id = self.account_id
-            
+
             if user_id and (prompt_tokens > 0 or completion_tokens > 0):
 
                 if cache_read_tokens > 0:
@@ -223,7 +224,7 @@ class ThreadManager:
                 # Convert UUID objects to strings for billing system (still uses PostgREST)
                 message_id_str = str(saved_message['message_id'])
                 thread_id_str = str(thread_id)
-                
+
                 deduct_result = await billing_integration.deduct_usage(
                     account_id=user_id,
                     prompt_tokens=prompt_tokens,
@@ -234,9 +235,24 @@ class ThreadManager:
                     cache_read_tokens=cache_read_tokens,
                     cache_creation_tokens=cache_creation_tokens
                 )
-                
+
                 if deduct_result.get('success'):
                     logger.debug(f"Successfully deducted ${deduct_result.get('cost', 0):.6f}")
+
+                    # Track cost for agent run if we have an agent_run_id (US-024)
+                    if self.agent_run_id:
+                        try:
+                            from core.agents.cost_tracking import track_llm_usage
+                            await track_llm_usage(
+                                agent_run_id=self.agent_run_id,
+                                prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens,
+                                model=model or "unknown",
+                                cache_read_tokens=cache_read_tokens,
+                                cache_creation_tokens=cache_creation_tokens
+                            )
+                        except Exception as cost_err:
+                            logger.warning(f"Failed to track cost for agent run {self.agent_run_id}: {cost_err}")
                 else:
                     logger.error(f"Failed to deduct credits: {deduct_result}")
         except Exception as e:
