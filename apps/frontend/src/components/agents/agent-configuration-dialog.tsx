@@ -54,6 +54,12 @@ import {
   Building2,
   Globe,
   Users,
+  Share2,
+  Copy,
+  Loader2,
+  Trash2,
+  ExternalLink,
+  Link2,
 } from 'lucide-react';
 import { KortixLoader } from '@/components/ui/kortix-loader';
 import { toast } from '@/lib/toast';
@@ -79,6 +85,15 @@ import { AgentTriggersConfiguration } from './triggers/agent-triggers-configurat
 import { AgentAvatar } from '../thread/content/agent-avatar';
 import { AgentIconEditorDialog } from './config/agent-icon-editor-dialog';
 import { AgentVersionSwitcher } from './agent-version-switcher';
+import { Switch } from '@/components/ui/switch';
+import {
+  listShareLinks,
+  createShareLink,
+  deleteShareLink,
+  revokeShareLink,
+  getShareLinkUrl,
+  type ShareLink,
+} from '@/lib/api/share-links';
 
 interface AgentConfigurationDialogProps {
   open: boolean;
@@ -123,6 +138,12 @@ export function AgentConfigurationDialog({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [isIconEditorOpen, setIsIconEditorOpen] = useState(false);
+
+  // Share links state
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
+  const [isLoadingShareLinks, setIsLoadingShareLinks] = useState(false);
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+  const [isDeletingShareLink, setIsDeletingShareLink] = useState<string | null>(null);
   
   // Debug state changes
   useEffect(() => {
@@ -135,6 +156,26 @@ export function AgentConfigurationDialog({
       setActiveTab(initialTab);
     }
   }, [open, initialTab]);
+
+  // Load share links when settings tab is active
+  useEffect(() => {
+    async function loadShareLinks() {
+      if (activeTab !== 'settings' || !agentId) return;
+
+      setIsLoadingShareLinks(true);
+      try {
+        const response = await listShareLinks(agentId);
+        setShareLinks(response.share_links || []);
+      } catch (error) {
+        console.error('Failed to load share links:', error);
+        setShareLinks([]);
+      } finally {
+        setIsLoadingShareLinks(false);
+      }
+    }
+
+    loadShareLinks();
+  }, [activeTab, agentId]);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -387,6 +428,67 @@ export function AgentConfigurationDialog({
 
   const handleExport = () => {
     exportMutation.mutate(agentId);
+  };
+
+  // Share link handlers
+  const handleCreateShareLink = async () => {
+    setIsCreatingShareLink(true);
+    try {
+      const newLink = await createShareLink(agentId);
+      setShareLinks(prev => [newLink, ...prev]);
+      toast.success('Share link created');
+
+      // Copy the URL to clipboard
+      const url = getShareLinkUrl(newLink.share_id);
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    } catch (error) {
+      console.error('Failed to create share link:', error);
+      toast.error('Failed to create share link');
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+  };
+
+  const handleCopyShareLink = async (shareId: string) => {
+    const url = getShareLinkUrl(shareId);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy link:', error);
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const handleDeleteShareLink = async (shareId: string) => {
+    setIsDeletingShareLink(shareId);
+    try {
+      await deleteShareLink(shareId);
+      setShareLinks(prev => prev.filter(link => link.share_id !== shareId));
+      toast.success('Share link deleted');
+    } catch (error) {
+      console.error('Failed to delete share link:', error);
+      toast.error('Failed to delete share link');
+    } finally {
+      setIsDeletingShareLink(null);
+    }
+  };
+
+  const handleRevokeShareLink = async (shareId: string) => {
+    setIsDeletingShareLink(shareId);
+    try {
+      const updatedLink = await revokeShareLink(shareId);
+      setShareLinks(prev =>
+        prev.map(link => (link.share_id === shareId ? updatedLink : link))
+      );
+      toast.success('Share link deactivated');
+    } catch (error) {
+      console.error('Failed to revoke share link:', error);
+      toast.error('Failed to revoke share link');
+    } finally {
+      setIsDeletingShareLink(null);
+    }
   };
 
   const handleClose = (open: boolean) => {
@@ -939,6 +1041,134 @@ export function AgentConfigurationDialog({
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Public Share Links Section */}
+                    <div className="space-y-4 border-t pt-6">
+                      <div>
+                        <Label className="text-base font-semibold mb-1 block">Public Share Links</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Create shareable links to let anyone try this Worker without signing up
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Button
+                          onClick={handleCreateShareLink}
+                          disabled={isCreatingShareLink || isSunaAgent}
+                          variant="outline"
+                          className="w-full max-w-md"
+                        >
+                          {isCreatingShareLink ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Creating link...
+                            </>
+                          ) : (
+                            <>
+                              <Link2 className="h-4 w-4 mr-2" />
+                              Create New Share Link
+                            </>
+                          )}
+                        </Button>
+
+                        {isLoadingShareLinks ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : shareLinks.length > 0 ? (
+                          <div className="space-y-2">
+                            {shareLinks.map(link => (
+                              <div
+                                key={link.share_id}
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-lg border",
+                                  link.is_active ? "bg-card" : "bg-muted/50 opacity-60"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className={cn(
+                                    "flex-shrink-0 w-2 h-2 rounded-full",
+                                    link.is_active ? "bg-green-500" : "bg-red-500"
+                                  )} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-mono truncate text-muted-foreground">
+                                      {getShareLinkUrl(link.share_id)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {link.views_count} views &middot; {link.runs_count} runs
+                                      {!link.is_active && ' (deactivated)'}
+                                      {link.expires_at && ` &middot; Expires ${new Date(link.expires_at).toLocaleDateString()}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleCopyShareLink(link.share_id)}
+                                    title="Copy link"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => window.open(getShareLinkUrl(link.share_id), '_blank')}
+                                    title="Open in new tab"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                  {link.is_active ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-orange-500 hover:text-orange-600"
+                                      onClick={() => handleRevokeShareLink(link.share_id)}
+                                      disabled={isDeletingShareLink === link.share_id}
+                                      title="Deactivate link"
+                                    >
+                                      {isDeletingShareLink === link.share_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <X className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive"
+                                      onClick={() => handleDeleteShareLink(link.share_id)}
+                                      disabled={isDeletingShareLink === link.share_id}
+                                      title="Delete link"
+                                    >
+                                      {isDeletingShareLink === link.share_id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
+                            <div className="flex items-center gap-3">
+                              <Share2 className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm text-muted-foreground">
+                                  No share links yet. Create one to let others try this Worker.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </TabsContent>

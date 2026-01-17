@@ -1045,3 +1045,72 @@
   - Plan tier can come from organizations table (org context) or basejump.billing_subscriptions (personal)
   - Fail open on errors to not block users unexpectedly
 ---
+
+## Iteration 26 - US-026: Public agent sharing links
+- What was implemented:
+  - Database migration 20260118100000_agent_share_links.sql:
+    - Created agent_share_links table: share_id (VARCHAR primary key), agent_id FK, created_by FK, created_at, expires_at, is_active, views_count, runs_count, last_viewed_at, last_run_at, settings JSONB, metadata JSONB
+    - Added indexes for efficient lookups: agent_id, created_by, is_active, created_at
+    - RLS policies for public viewing and owner-only management
+    - SQL helper functions: generate_share_token, create_agent_share_link, get_agent_share_link, revoke_agent_share_link, delete_agent_share_link, get_agent_share_links, increment_share_link_run
+  - Backend repository (backend/core/agents/share_links_repo.py):
+    - generate_share_token: creates unique URL-safe token
+    - create_share_link: creates new share link for agent
+    - get_share_link_by_id, get_share_link_with_agent: fetches share links
+    - get_agent_share_links: lists all share links for an agent
+    - update_share_link, revoke_share_link, delete_share_link: management functions
+    - increment_view_count, increment_run_count: analytics tracking
+    - verify_agent_ownership, check_share_link_valid: validation helpers
+  - Backend API models (backend/core/api_models/share_links.py):
+    - ShareLinkSettings, ShareLinkCreateRequest, ShareLinkUpdateRequest
+    - ShareLinkAgentInfo, ShareLinkResponse, ShareLinksListResponse
+    - PublicShareLinkResponse, PublicShareLinkErrorResponse
+  - Backend API endpoints (backend/core/agents/share_links_api.py):
+    - POST /agents/{agent_id}/share-links - create share link
+    - GET /agents/{agent_id}/share-links - list agent share links
+    - GET /share/{share_id} - get public share link (no auth required)
+    - PATCH /share-links/{share_id} - update share link
+    - DELETE /share-links/{share_id} - delete share link
+    - POST /share-links/{share_id}/revoke - deactivate share link
+  - Added get_current_user and get_optional_user aliases to auth_utils.py
+  - Frontend API client (apps/frontend/src/lib/api/share-links.ts):
+    - Types for all share link operations
+    - createShareLink, listShareLinks, getPublicShareLink functions
+    - updateShareLink, deleteShareLink, revokeShareLink functions
+    - getShareLinkUrl helper for building public URLs
+  - Frontend public share page (apps/frontend/src/app/share/agent/[shareId]/page.tsx):
+    - Fetches share link data with agent info
+    - Displays agent icon, name, description
+    - Shows view count and custom greeting if configured
+    - Chat preview with disabled input
+    - CTA to sign up and try the agent
+    - Error handling for deactivated/expired/not found links
+  - Frontend agent configuration dialog (agent-configuration-dialog.tsx):
+    - Added "Public Share Links" section to Settings tab
+    - "Create New Share Link" button
+    - List of existing share links with stats (views, runs)
+    - Copy link, open in new tab, deactivate/delete actions
+    - Status indicator (green=active, red=deactivated)
+    - Expiration date display when applicable
+- Files changed:
+  - backend/supabase/migrations/20260118100000_agent_share_links.sql (new)
+  - backend/core/agents/share_links_repo.py (new)
+  - backend/core/api_models/share_links.py (new)
+  - backend/core/api_models/__init__.py (modified - exports share link models)
+  - backend/core/agents/share_links_api.py (new)
+  - backend/core/utils/auth_utils.py (modified - added get_current_user, get_optional_user aliases)
+  - backend/api.py (modified - includes share_links_router)
+  - apps/frontend/src/lib/api/share-links.ts (new)
+  - apps/frontend/src/app/share/agent/[shareId]/page.tsx (new)
+  - apps/frontend/src/components/agents/agent-configuration-dialog.tsx (modified - added share links UI)
+  - PRD.md (marked US-026 ACs as complete)
+- Learnings for future iterations:
+  - Share tokens use secrets.token_urlsafe for cryptographically secure random strings
+  - Public endpoints use get_optional_user to support both authenticated and anonymous access
+  - Share link URL format: /share/agent/{share_id}
+  - runs_count tracks public runs (separate from org limits, as per PRD requirement)
+  - Settings JSONB supports rate_limit_per_hour, allow_file_access, custom_greeting
+  - Deactivation (revoke) is soft delete - keeps the link but marks inactive
+  - Delete is hard delete - removes the link completely
+  - Browser verification still pending - requires manual testing
+---

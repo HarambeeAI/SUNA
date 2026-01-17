@@ -97,6 +97,17 @@ from .usage_dashboard import (
     DashboardResponse,
 )
 
+from .share_links import (
+    ShareLinkSettings,
+    ShareLinkCreateRequest,
+    ShareLinkAgentInfo,
+    ShareLinkResponse,
+    ShareLinksListResponse,
+    PublicShareLinkResponse,
+    PublicShareLinkErrorResponse,
+    ShareLinkUpdateRequest,
+)
+
 
 __all__ = [
     # Agent models
@@ -181,4 +192,14 @@ __all__ = [
     "UsageExportRow",
     "UsageExportResponse",
     "DashboardResponse",
+
+    # Share link models
+    "ShareLinkSettings",
+    "ShareLinkCreateRequest",
+    "ShareLinkAgentInfo",
+    "ShareLinkResponse",
+    "ShareLinksListResponse",
+    "PublicShareLinkResponse",
+    "PublicShareLinkErrorResponse",
+    "ShareLinkUpdateRequest",
 ]

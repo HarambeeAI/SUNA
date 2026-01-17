@@ -326,6 +326,10 @@ async def get_optional_user_id(request: Request) -> Optional[str]:
 
 get_optional_current_user_id_from_jwt = get_optional_user_id
 
+# Aliases for cleaner dependency names
+get_current_user = verify_and_get_user_id_from_jwt
+get_optional_user = get_optional_user_id
+
 async def verify_and_get_agent_authorization(client, agent_id: str, user_id: str) -> dict:
     try:
         agent_result = await client.table('agents').select('*').eq('agent_id', agent_id).eq('account_id', user_id).execute()

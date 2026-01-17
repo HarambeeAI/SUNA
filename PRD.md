@@ -313,13 +313,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization member, I want to generate public share links for agents so I can demo them externally.
 
 **Acceptance Criteria:**
-- [ ] Agent settings has "Share Publicly" toggle
-- [ ] When enabled, generate unique share token
-- [ ] Public URL format: `/share/agent/:token`
-- [ ] Public page shows agent name, description, interactive chat
-- [ ] Track public usage separately: runs don't count toward org limits
-- [ ] Ability to revoke public access (delete token)
-- [ ] Typecheck passes
+- [x] Agent settings has "Share Publicly" toggle
+- [x] When enabled, generate unique share token
+- [x] Public URL format: `/share/agent/:token`
+- [x] Public page shows agent name, description, interactive chat
+- [x] Track public usage separately: runs don't count toward org limits
+- [x] Ability to revoke public access (delete token)
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-027: Template submission by users

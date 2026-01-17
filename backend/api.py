@@ -49,6 +49,7 @@ from core.organizations.invitations_api import router as invitations_router
 from core.organizations.auth_context_api import router as auth_context_router
 from core.organizations.billing_api import router as org_billing_router
 from core.organizations.usage_dashboard_api import router as usage_dashboard_router
+from core.agents.share_links_api import router as share_links_router
 import sys
 from core.triggers import api as triggers_api
 from core.services import api_keys_api
@@ -327,6 +328,7 @@ api_router.include_router(invitations_router)
 api_router.include_router(auth_context_router)
 api_router.include_router(org_billing_router)
 api_router.include_router(usage_dashboard_router)
+api_router.include_router(share_links_router)
 
 from core.mcp_module import api as mcp_api
 from core.credentials import api as credentials_api
