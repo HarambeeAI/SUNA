@@ -248,7 +248,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Usage percentage indicators with warnings at 80% and 100%
 - [x] Export usage data as CSV button
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-021: Onboarding flow for new organizations
 **Description:** As a new user, I want guided onboarding so I understand how to use Worryless AI effectively.
