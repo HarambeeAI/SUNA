@@ -15,6 +15,13 @@ export interface UserContext {
   };
   invitedTeammates?: string[];
   selectedAgents?: string[];
+  // Worryless AI onboarding fields
+  createdOrgId?: string;
+  selectedTemplateId?: string;
+  selectedTemplateName?: string;
+  createBlankAgent?: boolean;
+  firstMessage?: string;
+  hasCompletedTutorial?: boolean;
 }
 
 export interface OnboardingStep {

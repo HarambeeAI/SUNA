@@ -254,13 +254,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a new user, I want guided onboarding so I understand how to use Worryless AI effectively.
 
 **Acceptance Criteria:**
-- [ ] After signup, show modal: "Welcome to Worryless AI! Let's get started"
-- [ ] Step 1: Create organization or skip to personal workspace
-- [ ] Step 2: Choose from featured templates or create blank agent
-- [ ] Step 3: Interactive tutorial: send first message to agent
-- [ ] Step 4: Show tips: invite team, explore templates, upgrade plan
-- [ ] Onboarding dismissible and resumable via "Help" menu
-- [ ] Typecheck passes
+- [x] After signup, show modal: "Welcome to Worryless AI! Let's get started"
+- [x] Step 1: Create organization or skip to personal workspace
+- [x] Step 2: Choose from featured templates or create blank agent
+- [x] Step 3: Interactive tutorial: send first message to agent
+- [x] Step 4: Show tips: invite team, explore templates, upgrade plan
+- [x] Onboarding dismissible and resumable via "Help" menu
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-022: Billing portal integration

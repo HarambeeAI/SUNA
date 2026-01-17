@@ -840,3 +840,52 @@
   - Color thresholds: green <80%, yellow 80-99%, red 100%+
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 21 - US-021: Onboarding flow for new organizations
+- What was implemented:
+  - Database: Created migration 20260117230000_user_onboarding_state.sql
+    - Added onboarding columns to user_org_preferences table: onboarding_completed_at, onboarding_current_step, onboarding_dismissed, onboarding_data
+    - Created helper functions: has_user_completed_onboarding, update_user_onboarding_progress, complete_user_onboarding, dismiss_user_onboarding, reset_user_onboarding, get_user_onboarding_state
+  - Frontend: Created new onboarding steps (5-step flow):
+    1. WelcomeStep - Introduction to Worryless AI with feature highlights
+    2. WorkspaceChoiceStep - Create organization or skip to personal workspace
+    3. TemplateChoiceStep - Choose from featured templates or create blank agent
+    4. FirstMessageStep - Interactive tutorial to send first message
+    5. TipsCompletionStep - Show tips about inviting team, exploring templates, upgrading
+  - Frontend: Created worryless-onboarding-config.tsx with step configuration
+  - Frontend: Updated onboarding types in shared/types.ts and shared/context.ts
+  - Frontend: Created WorrylessOnboardingProvider that:
+    - Detects new users via auth_event=signup URL param
+    - Shows onboarding modal with new steps
+    - Handles agent creation from template or blank on completion
+    - Cleans up URL params after completion
+  - Frontend: Updated layout-content.tsx to use WorrylessOnboardingProvider
+  - Frontend: Added "Resume Onboarding" option to Help sidebar
+    - Added "Getting Started" section with resume option
+    - Uses RefreshCw icon and handleResumeOnboarding function
+    - Resets context and starts onboarding with fresh steps
+- Files changed:
+  - backend/supabase/migrations/20260117230000_user_onboarding_state.sql (new)
+  - apps/frontend/src/components/onboarding/steps/welcome-step.tsx (new)
+  - apps/frontend/src/components/onboarding/steps/workspace-choice-step.tsx (new)
+  - apps/frontend/src/components/onboarding/steps/template-choice-step.tsx (new)
+  - apps/frontend/src/components/onboarding/steps/first-message-step.tsx (new)
+  - apps/frontend/src/components/onboarding/steps/tips-completion-step.tsx (new)
+  - apps/frontend/src/components/onboarding/worryless-onboarding-config.tsx (new)
+  - apps/frontend/src/components/onboarding/worryless-onboarding-provider.tsx (new)
+  - apps/frontend/src/components/onboarding/shared/types.ts (modified - added new fields)
+  - apps/frontend/src/components/onboarding/shared/context.ts (modified - added new fields)
+  - apps/frontend/src/components/dashboard/layout-content.tsx (modified - uses WorrylessOnboardingProvider)
+  - apps/frontend/src/components/help/help-sidebar.tsx (modified - added Resume Onboarding option)
+  - PRD.md (marked US-021 ACs as complete)
+- Learnings for future iterations:
+  - Onboarding flow is a 5-step modal that appears after signup
+  - New user detection uses auth_event=signup URL param set in auth callback
+  - useOnboarding hook from @/hooks/onboarding provides startOnboarding, completeOnboarding, resetOnboarding functions
+  - AgentAvatar component expects iconName, iconColor, size props (not agent object)
+  - createAgentFromTemplate expects { name: string } as second param, not just string
+  - Help sidebar uses action field to handle custom actions like resume-onboarding
+  - Onboarding state stored in localStorage via Zustand (onboarding-storage-v1 key)
+  - Database schema ready for server-side persistence when needed
+  - Browser verification still pending - requires manual testing
+---

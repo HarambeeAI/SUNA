@@ -32,8 +32,8 @@ const PresentationViewerWrapper = lazy(() =>
   import('@/stores/presentation-viewer-store').then(mod => ({ default: mod.PresentationViewerWrapper }))
 );
 
-const OnboardingProvider = lazy(() => 
-  import('@/components/onboarding/onboarding-provider').then(mod => ({ default: mod.OnboardingProvider }))
+const WorrylessOnboardingProvider = lazy(() =>
+  import('@/components/onboarding/worryless-onboarding-provider').then(mod => ({ default: mod.WorrylessOnboardingProvider }))
 );
 const DashboardPromoBanner = lazy(() => 
   import('@/components/home/dashboard-promo-banner').then(mod => ({ default: mod.DashboardPromoBanner }))
@@ -227,9 +227,9 @@ export default function DashboardLayoutContent({
         </Suspense>
         
         <Suspense fallback={null}>
-          <OnboardingProvider>
+          <WorrylessOnboardingProvider>
             <div className="bg-background">{children}</div>
-          </OnboardingProvider>
+          </WorrylessOnboardingProvider>
         </Suspense>
         <Suspense fallback={null}>
           <PresentationViewerWrapper />

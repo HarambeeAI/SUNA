@@ -4,7 +4,14 @@ import { UserContext } from './types';
 export let userContext: UserContext = {
   name: '',
   primaryGoals: [],
-  selectedAgents: []
+  selectedAgents: [],
+  // Worryless AI onboarding fields
+  createdOrgId: undefined,
+  selectedTemplateId: undefined,
+  selectedTemplateName: undefined,
+  createBlankAgent: false,
+  firstMessage: undefined,
+  hasCompletedTutorial: false,
 };
 
 export const updateUserContext = (updates: Partial<UserContext>) => {
@@ -15,7 +22,13 @@ export const resetUserContext = () => {
   userContext = {
     name: '',
     primaryGoals: [],
-    selectedAgents: []
+    selectedAgents: [],
+    createdOrgId: undefined,
+    selectedTemplateId: undefined,
+    selectedTemplateName: undefined,
+    createBlankAgent: false,
+    firstMessage: undefined,
+    hasCompletedTutorial: false,
   };
 };
 

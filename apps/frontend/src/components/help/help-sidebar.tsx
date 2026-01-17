@@ -3,12 +3,15 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Search, Coins, MessageCircle, HelpCircle } from "lucide-react"
+import { Search, Coins, MessageCircle, HelpCircle, RefreshCw } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { SpotlightCard } from "@/components/ui/spotlight-card"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useOnboarding } from "@/hooks/onboarding"
+import { worrylessOnboardingSteps } from "@/components/onboarding/worryless-onboarding-config"
+import { resetUserContext } from "@/components/onboarding/shared/context"
 
 import {
   Sidebar,
@@ -27,6 +30,15 @@ import { KortixLogo } from "../sidebar/kortix-logo"
 
 const helpData = {
   navMain: [
+    {
+      title: "Getting Started",
+      items: [
+        {
+          title: "Resume Onboarding",
+          action: "resume-onboarding",
+        },
+      ],
+    },
     {
       title: "Billing & Usage",
       items: [
@@ -60,9 +72,16 @@ interface HelpSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function HelpSidebar({ onSearchClick, ...props }: HelpSidebarProps) {
   const pathname = usePathname()
+  const { startOnboarding, resetOnboarding } = useOnboarding()
 
   const isActive = (url: string) => {
     return pathname === url
+  }
+
+  const handleResumeOnboarding = () => {
+    resetUserContext();
+    resetOnboarding();
+    startOnboarding(worrylessOnboardingSteps);
   }
 
   return (
@@ -96,8 +115,8 @@ export function HelpSidebar({ onSearchClick, ...props }: HelpSidebarProps) {
             <SidebarGroupLabel className="font-medium tracking-wide ml-1">{section.title}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {section.items.map((item) => {
-                  const active = isActive(item.url);
+                {section.items.map((item: any) => {
+                  const active = item.url ? isActive(item.url) : false;
                   return (
                     <SidebarMenuItem key={item.title}>
                       <SpotlightCard
@@ -106,11 +125,19 @@ export function HelpSidebar({ onSearchClick, ...props }: HelpSidebarProps) {
                           active ? "bg-muted" : "bg-transparent"
                         )}
                       >
-                        {item.external ? (
-                          <a 
-                            href={item.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                        {item.action === "resume-onboarding" ? (
+                          <button
+                            onClick={handleResumeOnboarding}
+                            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span className="font-medium text-primary">{item.title}</span>
+                          </button>
+                        ) : item.external ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className={cn(
                               "flex items-center justify-between w-full px-3 py-2 text-sm",
                               active ? "text-foreground" : "text-muted-foreground"
@@ -119,8 +146,8 @@ export function HelpSidebar({ onSearchClick, ...props }: HelpSidebarProps) {
                             <span className="font-medium text-primary">{item.title}</span>
                           </a>
                         ) : (
-                          <Link 
-                            href={item.url} 
+                          <Link
+                            href={item.url}
                             className={cn(
                               "flex items-center justify-between w-full px-3 py-2 text-sm",
                               active ? "text-foreground" : "text-muted-foreground"
