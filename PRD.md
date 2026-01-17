@@ -222,7 +222,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Organization admins can delete any team agent
 - [x] Members can only delete their own agents
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-019: Agent sharing permissions
 **Description:** As an agent creator, I want to control who in my organization can use my agent so I can manage access.
