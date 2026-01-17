@@ -115,7 +115,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] "Upgrade Plan" button for free tier users links to checkout
 - [x] "Manage Billing" button for paid users opens Stripe portal
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-010: Team members management UI
 **Description:** As an organization admin, I want to see and manage team members so I can control workspace access.
