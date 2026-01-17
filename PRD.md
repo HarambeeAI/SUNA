@@ -338,13 +338,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a platform admin, I want an admin dashboard so I can monitor the platform and moderate content.
 
 **Acceptance Criteria:**
-- [ ] Admin-only route `/admin` with authentication check
-- [ ] Overview stats: total users, organizations, agents, runs today
-- [ ] Template submissions list with approve/reject actions
-- [ ] Organizations list with ability to change plan tier
-- [ ] User list with ability to suspend/unsuspend accounts
-- [ ] System health: API response times, error rates, background job queue length
-- [ ] Typecheck passes
+- [x] Admin-only route `/admin` with authentication check
+- [x] Overview stats: total users, organizations, agents, runs today
+- [x] Template submissions list with approve/reject actions
+- [x] Organizations list with ability to change plan tier
+- [x] User list with ability to suspend/unsuspend accounts
+- [x] System health: API response times, error rates, background job queue length
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-029: Agent performance monitoring

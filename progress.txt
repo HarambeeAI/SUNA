@@ -1114,3 +1114,109 @@
   - Delete is hard delete - removes the link completely
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 27 - US-027: Template submission by users
+- What was implemented:
+  - Database migration 20260118200000_template_submissions.sql:
+    - Created template_submission_status enum (pending, approved, rejected)
+    - Created template_submissions table with: submission_id, agent_id, submitter_id, template_name, template_description, category_id, use_cases, status, submitted_at, reviewed_at, reviewed_by, rejection_reason, admin_notes, published_template_id, metadata
+    - Added RLS policies for own submission access and admin access
+    - Created helper functions: create_template_submission, get_user_template_submissions, get_pending_template_submissions, approve_template_submission, reject_template_submission, cancel_template_submission, get_template_submission_stats
+  - Backend API models (backend/core/api_models/template_submissions.py):
+    - TemplateSubmissionStatus enum
+    - TemplateSubmissionCreateRequest, TemplateSubmissionResponse, TemplateSubmissionsListResponse
+    - ApproveSubmissionRequest, RejectSubmissionRequest, TemplateSubmissionStatsResponse
+  - Backend repository (backend/core/templates/submissions_repo.py):
+    - create_submission, get_submission_by_id, get_submission_with_details
+    - get_user_submissions, get_pending_submissions, get_all_submissions
+    - check_existing_pending_submission, verify_agent_ownership
+    - approve_submission (creates template and updates submission)
+    - reject_submission, cancel_submission, get_submission_stats
+  - Backend API endpoints (backend/core/templates/submissions_api.py):
+    - User endpoints:
+      - POST /template-submissions - submit agent as template
+      - GET /template-submissions - list own submissions
+      - GET /template-submissions/{id} - get specific submission
+      - DELETE /template-submissions/{id} - cancel pending submission
+    - Admin endpoints:
+      - GET /admin/template-submissions - list all submissions
+      - GET /admin/template-submissions/stats - get submission statistics
+      - POST /admin/template-submissions/{id}/approve - approve and publish
+      - POST /admin/template-submissions/{id}/reject - reject with reason
+  - Email notification service (backend/core/notifications/template_notifications.py):
+    - TemplateNotificationService class with class methods
+    - send_submission_approved - notifies user when template is approved
+    - send_submission_rejected - notifies user when template is rejected
+    - send_submission_received - confirmation when submission is received
+    - Uses existing Novu workflow integration
+  - Frontend API client (apps/frontend/src/lib/api/template-submissions.ts):
+    - Types for all submission operations
+    - User functions: createTemplateSubmission, listMySubmissions, getSubmission, cancelSubmission
+    - Admin functions: listAllSubmissions, getSubmissionStats, approveSubmission, rejectSubmission
+  - Frontend UI (apps/frontend/src/components/agents/agent-configuration-dialog.tsx):
+    - Added "Submit to Marketplace" section in Settings tab
+    - Shows pending submission status with submitted date
+    - "Submit as Template" button opens submission dialog
+    - Submission form: template name, description, category dropdown, example use cases (3 inputs)
+    - Loads template categories from existing API
+    - Checks for existing pending submissions to prevent duplicates
+    - Success toast notifies user of submission
+- Files changed:
+  - backend/supabase/migrations/20260118200000_template_submissions.sql (new)
+  - backend/core/api_models/template_submissions.py (new)
+  - backend/core/api_models/__init__.py (modified - exports submission models)
+  - backend/core/templates/submissions_repo.py (new)
+  - backend/core/templates/submissions_api.py (new)
+  - backend/core/notifications/template_notifications.py (new)
+  - backend/api.py (modified - includes submission routers)
+  - apps/frontend/src/lib/api/template-submissions.ts (new)
+  - apps/frontend/src/components/agents/agent-configuration-dialog.tsx (modified - added submission UI)
+  - PRD.md (marked US-027 as complete)
+- Learnings for future iterations:
+  - Submissions use foreign key to agent_templates for published_template_id
+  - approve_submission creates the template from agent's current version config
+  - Admin endpoints use require_admin dependency that checks user_roles table
+  - Email notifications are sent asynchronously via asyncio.create_task (non-blocking)
+  - Frontend loads categories from getTemplateCategories for the category dropdown
+  - Pending submission check prevents duplicate submissions for the same agent
+  - use_cases stored as TEXT[] array, converted to usage_examples JSONB on approval
+---
+
+## Iteration 28 - US-028: Admin panel for platform management
+- What was implemented:
+  - Backend: Created platform_admin_api.py with comprehensive admin endpoints:
+    - GET /admin/platform/overview - platform statistics (total users, orgs, agents, runs today/week, active users)
+    - GET /admin/platform/organizations - list all organizations with pagination/filtering
+    - PATCH /admin/platform/organizations/{org_id}/plan-tier - change organization plan tier
+    - GET /admin/platform/users - list all users with pagination/filtering
+    - POST /admin/platform/users/{user_id}/suspend - suspend a user account
+    - POST /admin/platform/users/{user_id}/unsuspend - unsuspend a user account
+    - GET /admin/platform/health - system health metrics (API, DB, Redis status, active runs)
+  - Database: Created migration 20260118300000_user_suspensions.sql:
+    - user_suspensions table with: id, user_id, reason, suspended_by, suspended_at, is_active, etc.
+    - RLS policies restricting access to admin/super_admin only
+    - Helper functions: is_user_suspended, get_user_suspension
+  - Frontend API client: Created admin-platform.ts with types and functions
+  - Frontend: Created comprehensive admin dashboard page at /admin with:
+    - Overview tab: 8 stat cards showing key metrics (users, orgs, agents, runs, active users, etc.)
+    - Submissions tab: template submissions list with approve/reject actions (integrates with existing submission API)
+    - Organizations tab: list with search, plan filter, and plan tier change dialog
+    - Users tab: list with search, suspension filter, suspend/unsuspend dialogs
+    - System Health tab: service status cards (API, Database, Redis health)
+  - Registered platform_admin_router in backend/api.py
+- Files changed:
+  - backend/core/admin/platform_admin_api.py (new)
+  - backend/supabase/migrations/20260118300000_user_suspensions.sql (new)
+  - apps/frontend/src/lib/api/admin-platform.ts (new)
+  - apps/frontend/src/app/(dashboard)/admin/page.tsx (new)
+  - backend/api.py (modified - includes platform_admin_router)
+  - PRD.md (marked US-028 ACs as complete)
+- Learnings for future iterations:
+  - Admin endpoints use require_admin dependency from core.auth module
+  - Existing admin infrastructure at /admin/* provides patterns for user roles, system status, analytics
+  - Platform overview uses multiple DB queries to aggregate stats (total users from basejump.accounts, etc.)
+  - Frontend admin page uses React Query with auto-refresh for real-time monitoring
+  - Template submission API at /admin/template-submissions already existed - integrated into UI
+  - User suspension is a soft-delete pattern with is_active flag for audit trail
+  - Browser verification still pending - requires manual testing
+---
