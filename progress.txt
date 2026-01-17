@@ -558,3 +558,87 @@
   - Public templates can be updated, which increments template_version
   - Direct template creation (POST /direct) bypasses the agent-based creation flow
 ---
+
+## Iteration 18 - US-014: Create agent from template endpoint
+- What was implemented:
+  - POST /v1/agents/from-template/{template_id} endpoint in agent_crud.py
+  - Creates new agent using template's system_prompt and tools_config
+  - Optional name override in request body (AgentFromTemplateRequest model)
+  - Validates user access to template (public or owned by user)
+  - Checks agent limits for both org context and personal workspace
+  - Increments org agent usage when in organization context
+  - Creates initial agent version with template configuration
+  - Tracks template usage via increment_download_count
+  - Rollback on failure (deletes agent if version creation fails)
+  - Returns full AgentResponse with loaded config
+- Files changed:
+  - backend/core/api_models/agents.py (new AgentFromTemplateRequest model)
+  - backend/core/api_models/__init__.py (exports new model)
+  - backend/core/agents/agent_crud.py (new create_agent_from_template endpoint)
+  - PRD.md (marked US-014 as complete)
+- Learnings for future iterations:
+  - Template's download_count field serves as times_used counter
+  - Template system_prompt accessed via template.system_prompt property
+  - Template agentpress_tools accessed via template.agentpress_tools property
+  - Template config has tools: { agentpress, mcp, custom_mcp } structure
+  - Use template_service.increment_download_count(template_id) to track usage
+  - Existing /install endpoint in templates API is for complex installations with MCP configs
+  - This simpler endpoint is for basic agent creation from template
+---
+
+## Iteration 19 - US-015: Seed initial agent templates
+- What was implemented:
+  - Database migration 20260117210000_seed_initial_templates.sql:
+    - Creates system account (kortix-team) for official templates if not exists
+    - Inserts 5 high-quality agent templates:
+      1. Customer Service Agent - handles support tickets, FAQ lookup, ticket routing
+      2. Sales Research Agent - company research, lead enrichment, prospect outreach
+      3. Content Writer Agent - blog posts, social media, SEO optimization
+      4. Data Analyst Agent - CSV analysis, visualization, report generation
+      5. Meeting Assistant Agent - schedule meetings, send reminders, take notes
+    - Each template includes:
+      - Detailed system_prompt with guidelines and frameworks
+      - Appropriate agentpress tools enabled (web_search, files, shell, etc.)
+      - Tags for searchability
+      - Category linkage via temp_get_category_id helper
+      - Usage examples showing user/assistant conversation pairs
+      - Icon, color, and background for visual distinction
+      - is_kortix_team=true and is_public=true flags
+- Files changed:
+  - backend/supabase/migrations/20260117210000_seed_initial_templates.sql (new)
+  - PRD.md (marked US-015 as complete)
+- Learnings for future iterations:
+  - Templates use deterministic UUIDs for system account (00000000-0000-0000-0000-000000000001)
+  - Template config structure: { system_prompt, model, tools: { agentpress, mcp, custom_mcp }, triggers, metadata }
+  - agentpress tools use boolean values: { tool_name: true/false }
+  - usage_examples is JSONB array with { role, content } objects
+  - Categories are linked via category_id FK to template_categories table
+  - Use ON CONFLICT (template_id) DO NOTHING for idempotent inserts
+  - Icons use lucide-react icon names (headphones, briefcase, pen-tool, bar-chart, calendar)
+---
+
+## Iteration 20 - US-016: Template marketplace UI
+- What was implemented:
+  - Created template marketplace page at /templates
+  - Grid layout showing template cards with: icon, name, description, category badge, tags, download count, "Use Template" button
+  - Category filter tabs at the top (All Templates + seeded categories)
+  - Real-time search bar with debounced filtering
+  - Template detail modal showing: full description, tags, usage examples, configuration info
+  - "Use Template" dialog with agent name input field
+  - Agent creation from template via POST /agents/from-template/{template_id}
+  - Success toast with redirect to agent configuration page
+  - Added createAgentFromTemplate function to templates.ts API
+  - Fixed buildQueryString helper for proper URL parameter handling (backendApi.get doesn't support params object)
+- Files changed:
+  - apps/frontend/src/app/(dashboard)/templates/page.tsx (new)
+  - apps/frontend/src/lib/api/templates.ts (modified - added createAgentFromTemplate, buildQueryString helper)
+  - PRD.md (marked US-016 ACs as complete)
+- Learnings for future iterations:
+  - backendApi.get/post don't support params option - need to build query string manually
+  - Template config.metadata.avatar stores icon name, config.metadata.avatar_color stores color
+  - AgentAvatar component handles rendering of template icons consistently
+  - Tabs component from shadcn/ui works well for category filtering
+  - Use debounced search (300ms) for real-time filtering
+  - Route to /agents/config/{agent_id} after agent creation
+  - Browser verification still pending - requires manual testing
+---

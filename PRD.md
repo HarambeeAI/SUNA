@@ -190,13 +190,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a user, I want to browse agent templates so I can discover and deploy useful agents.
 
 **Acceptance Criteria:**
-- [ ] Templates page shows grid of template cards with: icon, name, description, category badge, "Use Template" button
-- [ ] Filter by category tabs at top
-- [ ] Search bar filters templates in real-time
-- [ ] Template detail modal shows: full description, example prompts, configuration options
-- [ ] "Use Template" opens dialog: enter agent name, confirm, creates agent
-- [ ] Success toast: "Agent created! Redirecting..." then navigate to new agent thread
-- [ ] Typecheck passes
+- [x] Templates page shows grid of template cards with: icon, name, description, category badge, "Use Template" button
+- [x] Filter by category tabs at top
+- [x] Search bar filters templates in real-time
+- [x] Template detail modal shows: full description, example prompts, configuration options
+- [x] "Use Template" opens dialog: enter agent name, confirm, creates agent
+- [x] Success toast: "Agent created! Redirecting..." then navigate to new agent thread
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-017: Template preview in agent creation
