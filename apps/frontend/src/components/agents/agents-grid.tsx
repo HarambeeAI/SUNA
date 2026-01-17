@@ -15,6 +15,8 @@ import { isStagingMode } from '@/lib/config';
 
 interface Agent {
   agent_id: string;
+  account_id?: string; // Creator/owner ID
+  org_id?: string | null; // Organization ID if agent belongs to an org
   name: string;
   is_default: boolean;
   is_public?: boolean;
@@ -58,6 +60,7 @@ interface AgentsGridProps {
   isDeletingAgent?: (agentId: string) => boolean;
   onPublish?: (agent: Agent) => void;
   publishingId?: string | null;
+  showCreatorInfo?: boolean; // Show creator badge for team agents
 }
 
 interface AgentModalProps {
@@ -205,15 +208,16 @@ const AgentModal: React.FC<AgentModalProps> = ({
   );
 };
 
-export const AgentsGrid: React.FC<AgentsGridProps> = ({ 
-  agents, 
-  onEditAgent, 
-  onDeleteAgent, 
+export const AgentsGrid: React.FC<AgentsGridProps> = ({
+  agents,
+  onEditAgent,
+  onDeleteAgent,
   onToggleDefault,
   deleteAgentMutation,
   isDeletingAgent,
   onPublish,
-  publishingId: externalPublishingId
+  publishingId: externalPublishingId,
+  showCreatorInfo = false
 }) => {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
@@ -301,6 +305,11 @@ export const AgentsGrid: React.FC<AgentsGridProps> = ({
                     icon_name: agent.icon_name,
                     icon_color: agent.icon_color,
                     icon_background: agent.icon_background,
+                    // Pass creator info for team agents
+                    ...(showCreatorInfo && agent.account_id ? {
+                      creator_id: agent.account_id,
+                      creator_name: 'Team member',
+                    } : {}),
                   }}
                   actions={{
                     onClick: () => !isDeleting && handleAgentClick(agent),

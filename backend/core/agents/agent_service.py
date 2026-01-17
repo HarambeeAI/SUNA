@@ -15,7 +15,10 @@ class AgentFilters:
         tools: Optional[List[str]] = None,
         content_type: Optional[str] = None,
         sort_by: str = "created_at",
-        sort_order: str = "desc"
+        sort_order: str = "desc",
+        org_id: Optional[str] = None,
+        include_team_agents: bool = True,
+        creator_filter: Optional[str] = None
     ):
         self.search = search
         self.has_default = has_default
@@ -25,6 +28,9 @@ class AgentFilters:
         self.content_type = content_type
         self.sort_by = sort_by
         self.sort_order = sort_order
+        self.org_id = org_id
+        self.include_team_agents = include_team_agents
+        self.creator_filter = creator_filter
 
 
 class AgentService:
@@ -156,9 +162,9 @@ class AgentService:
         return query
 
     async def _get_agents_database_paginated(
-        self, 
-        base_query, 
-        count_query, 
+        self,
+        base_query,
+        count_query,
         pagination_params: PaginationParams,
         filters: AgentFilters,
         user_id: str = None
@@ -166,9 +172,9 @@ class AgentService:
         # Use direct PostgreSQL via repo if user_id provided
         if user_id:
             from core.agents import repo as agents_repo
-            
+
             offset = (pagination_params.page - 1) * pagination_params.page_size
-            
+
             agents, total_count = await agents_repo.list_agents(
                 account_id=user_id,
                 limit=pagination_params.page_size,
@@ -176,17 +182,20 @@ class AgentService:
                 search=filters.search,
                 has_default=filters.has_default,
                 sort_by=filters.sort_by,
-                sort_order=filters.sort_order
+                sort_order=filters.sort_order,
+                org_id=filters.org_id,
+                include_team_agents=filters.include_team_agents,
+                creator_filter=filters.creator_filter
             )
-            
+
             # Transform to API format
             agent_responses = [
                 await self._transform_agent_data(row, load_config=False)
                 for row in agents
             ]
-            
+
             total_pages = (total_count + pagination_params.page_size - 1) // pagination_params.page_size if total_count else 0
-            
+
             return PaginatedResponse(
                 data=agent_responses,
                 pagination=PaginationMeta(
@@ -198,20 +207,20 @@ class AgentService:
                     has_previous=pagination_params.page > 1
                 )
             )
-        
+
         # Fallback to Supabase query
         paginated_result = await PaginationService.paginate_database_query(
             base_query=base_query,
             params=pagination_params,
             count_query=count_query
         )
-        
+
         # Transform without loading full configs (list operation)
         agent_responses = [
             await self._transform_agent_data(row, load_config=False)
             for row in paginated_result.data
         ]
-        
+
         return PaginatedResponse(
             data=agent_responses,
             pagination=paginated_result.pagination

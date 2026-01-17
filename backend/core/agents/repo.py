@@ -78,63 +78,208 @@ async def list_agents(
     search: Optional[str] = None,
     has_default: Optional[bool] = None,
     sort_by: str = "created_at",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
+    org_id: Optional[str] = None,
+    include_team_agents: bool = False,
+    creator_filter: Optional[str] = None
 ) -> Tuple[List[Dict[str, Any]], int]:
+    """
+    List agents with optional organization filtering.
+
+    Args:
+        account_id: User's account ID
+        org_id: Optional organization ID to filter by
+        include_team_agents: If True and org_id is set, include all agents in the org
+        creator_filter: Filter by specific creator_id (account_id)
+    """
     valid_sort_columns = {"name", "created_at", "updated_at"}
     if sort_by not in valid_sort_columns:
         sort_by = "created_at"
-    
+
     sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
-    
-    where_clauses = ["account_id = :account_id"]
+
     params: Dict[str, Any] = {"account_id": account_id, "limit": limit, "offset": offset}
-    
+
+    # Build WHERE clause based on context
+    if org_id and include_team_agents:
+        # Organization context: show all org agents
+        where_clauses = ["org_id = :org_id"]
+        params["org_id"] = org_id
+
+        if creator_filter:
+            where_clauses.append("account_id = :creator_filter")
+            params["creator_filter"] = creator_filter
+    elif org_id:
+        # Organization context but only user's agents
+        where_clauses = ["org_id = :org_id", "account_id = :account_id"]
+        params["org_id"] = org_id
+    else:
+        # Personal workspace: only user's personal agents (no org_id)
+        where_clauses = ["account_id = :account_id", "org_id IS NULL"]
+
     if search:
         where_clauses.append("(name ILIKE :search OR description ILIKE :search)")
         params["search"] = f"%{search}%"
-    
+
     if has_default is not None:
         where_clauses.append("is_default = :is_default")
         params["is_default"] = has_default
-    
+
     where_sql = " AND ".join(where_clauses)
-    
+
     sql = f"""
-    SELECT 
-        agent_id,
-        account_id,
-        name,
-        description,
-        icon_name,
-        icon_color,
-        icon_background,
-        is_default,
-        current_version_id,
-        version_count,
-        metadata,
-        created_at,
-        updated_at,
+    SELECT
+        a.agent_id,
+        a.account_id,
+        a.org_id,
+        a.name,
+        a.description,
+        a.icon_name,
+        a.icon_color,
+        a.icon_background,
+        a.is_default,
+        a.current_version_id,
+        a.version_count,
+        a.metadata,
+        a.created_at,
+        a.updated_at,
         COUNT(*) OVER() AS total_count
-    FROM agents
+    FROM agents a
     WHERE {where_sql}
     ORDER BY {sort_by} {sort_direction}
     LIMIT :limit OFFSET :offset
     """
-    
+
     rows = await execute(sql, params)
-    
+
     if not rows:
         return [], 0
-    
+
     total_count = rows[0]["total_count"] if rows else 0
-    
+
     agents = []
     for row in rows:
         agent = serialize_row(dict(row))
         agent["metadata"] = agent.get("metadata") or {}
         agents.append(agent)
-    
+
     return agents, total_count
+
+
+async def list_org_agents_with_creators(
+    org_id: str,
+    user_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    search: Optional[str] = None,
+    has_default: Optional[bool] = None,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    creator_filter: Optional[str] = None
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], int, int]:
+    """
+    List organization agents split into user's agents and team agents.
+    Returns (my_agents, team_agents, my_count, team_count)
+    """
+    valid_sort_columns = {"name", "created_at", "updated_at"}
+    if sort_by not in valid_sort_columns:
+        sort_by = "created_at"
+
+    sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+    params: Dict[str, Any] = {
+        "org_id": org_id,
+        "user_id": user_id,
+        "limit": limit,
+        "offset": offset
+    }
+
+    where_clauses = ["a.org_id = :org_id"]
+
+    if search:
+        where_clauses.append("(a.name ILIKE :search OR a.description ILIKE :search)")
+        params["search"] = f"%{search}%"
+
+    if has_default is not None:
+        where_clauses.append("a.is_default = :is_default")
+        params["is_default"] = has_default
+
+    if creator_filter:
+        where_clauses.append("a.account_id = :creator_filter")
+        params["creator_filter"] = creator_filter
+
+    where_sql = " AND ".join(where_clauses)
+
+    # Query all org agents with is_mine flag
+    sql = f"""
+    SELECT
+        a.agent_id,
+        a.account_id,
+        a.org_id,
+        a.name,
+        a.description,
+        a.icon_name,
+        a.icon_color,
+        a.icon_background,
+        a.is_default,
+        a.current_version_id,
+        a.version_count,
+        a.metadata,
+        a.created_at,
+        a.updated_at,
+        CASE WHEN a.account_id = :user_id THEN true ELSE false END as is_mine,
+        COUNT(*) OVER() AS total_count,
+        COUNT(*) FILTER (WHERE a.account_id = :user_id) OVER() AS my_count,
+        COUNT(*) FILTER (WHERE a.account_id != :user_id) OVER() AS team_count
+    FROM agents a
+    WHERE {where_sql}
+    ORDER BY
+        CASE WHEN a.account_id = :user_id THEN 0 ELSE 1 END,
+        {sort_by} {sort_direction}
+    LIMIT :limit OFFSET :offset
+    """
+
+    rows = await execute(sql, params)
+
+    if not rows:
+        return [], [], 0, 0
+
+    my_agents = []
+    team_agents = []
+    my_count = rows[0]["my_count"] if rows else 0
+    team_count = rows[0]["team_count"] if rows else 0
+
+    for row in rows:
+        agent = serialize_row(dict(row))
+        agent["metadata"] = agent.get("metadata") or {}
+        # Remove counting fields from agent data
+        is_mine = agent.pop("is_mine", False)
+        agent.pop("total_count", None)
+        agent.pop("my_count", None)
+        agent.pop("team_count", None)
+
+        if is_mine:
+            my_agents.append(agent)
+        else:
+            team_agents.append(agent)
+
+    return my_agents, team_agents, my_count, team_count
+
+
+async def get_org_agent_creators(org_id: str) -> List[Dict[str, Any]]:
+    """Get list of unique creators for agents in an organization."""
+    sql = """
+    SELECT DISTINCT
+        a.account_id as creator_id,
+        COUNT(*) as agent_count
+    FROM agents a
+    WHERE a.org_id = :org_id
+    GROUP BY a.account_id
+    ORDER BY agent_count DESC
+    """
+
+    rows = await execute(sql, {"org_id": org_id})
+    return [dict(row) for row in rows] if rows else []
 
 
 async def get_agent_by_id(agent_id: str, account_id: Optional[str] = None) -> Optional[Dict[str, Any]]:

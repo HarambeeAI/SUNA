@@ -680,3 +680,48 @@
   - Need to convert between the two types for the preview dialog
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 18 - US-018: Shared agents within organization
+- What was implemented:
+  - Backend: Updated agents API to support organization filtering
+    - Added org_id, include_team_agents, and creator_filter query params to GET /agents
+    - Updated list_agents repo function to filter by org context
+    - Added list_org_agents_with_creators function for org agent queries
+    - Added get_org_agent_creators function for creator dropdown data
+    - Backend automatically uses user's active org context for filtering
+  - Backend: Permission-based agent deletion
+    - Updated DELETE /agents/{agent_id} to check org permissions
+    - Owners/Admins can delete any agent in their org
+    - Members can only delete their own agents
+    - Viewers cannot delete agents
+    - Added get_organization_member to organizations repo
+  - Frontend: My Agents vs Team Agents sections
+    - Updated MyAgentsTab to show "My Workers" and "Team Workers" sections when in org context
+    - Added filter dropdown with options: All Workers, My Workers, Team Workers, Templates
+    - Split agents array by account_id comparison with current user
+    - Section headers show agent count
+  - Frontend: Creator info on team agent cards
+    - Updated AgentsGrid to support showCreatorInfo prop
+    - Team agent cards show "Team member" creator badge
+    - Updated Agent interface to include account_id and org_id
+  - Frontend: API parameters for org filtering
+    - Added include_team_agents and creator_filter to AgentsParams type
+    - Updated getAgents function to pass new params to backend
+- Files changed:
+  - backend/core/agents/repo.py (added org filtering to list_agents, new functions)
+  - backend/core/agents/agent_service.py (added org filters to AgentFilters class)
+  - backend/core/agents/agent_crud.py (updated GET /agents and DELETE /agents endpoints)
+  - backend/core/organizations/repo.py (added get_organization_member function)
+  - apps/frontend/src/hooks/agents/utils.ts (added include_team_agents, creator_filter params)
+  - apps/frontend/src/components/agents/custom-agents-page/my-agents-tab.tsx (added org context, sections)
+  - apps/frontend/src/components/agents/agents-grid.tsx (added showCreatorInfo prop)
+  - PRD.md (marked US-018 ACs as complete)
+- Learnings for future iterations:
+  - Organization context is retrieved via auth_context_repo.get_user_active_org_id(user_id)
+  - RBAC roles are defined in OrganizationRole enum in rbac.py (OWNER, ADMIN, MEMBER, VIEWER)
+  - useActiveOrg hook from organizations returns activeOrgId and availableOrgs
+  - useAuth hook returns user with id property for current user comparison
+  - Frontend splits agents by comparing agent.account_id === user.id
+  - Backend delete endpoint checks both org membership and role permissions
+  - Browser verification still pending - requires manual testing
+---

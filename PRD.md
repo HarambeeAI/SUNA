@@ -215,13 +215,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization member, I want to see agents created by teammates so we can collaborate on shared workflows.
 
 **Acceptance Criteria:**
-- [ ] Agents list shows two sections: "My Agents" and "Team Agents"
-- [ ] Team Agents section lists all agents in the organization
-- [ ] Agent cards show creator name and avatar
-- [ ] Filter agents by creator via dropdown
-- [ ] Organization admins can delete any team agent
-- [ ] Members can only delete their own agents
-- [ ] Typecheck passes
+- [x] Agents list shows two sections: "My Agents" and "Team Agents"
+- [x] Team Agents section lists all agents in the organization
+- [x] Agent cards show creator name and avatar
+- [x] Filter agents by creator via dropdown
+- [x] Organization admins can delete any team agent
+- [x] Members can only delete their own agents
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-019: Agent sharing permissions

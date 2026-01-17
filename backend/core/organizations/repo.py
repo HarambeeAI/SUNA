@@ -161,6 +161,20 @@ async def get_user_role_in_org(user_id: str, org_id: str) -> Optional[str]:
     return result['role'] if result else None
 
 
+async def get_organization_member(org_id: str, user_id: str) -> Optional[Dict[str, Any]]:
+    """Get a specific member's details in an organization."""
+    sql = """
+    SELECT
+        om.id, om.org_id, om.user_id, om.role, om.invited_by,
+        om.joined_at, om.metadata
+    FROM organization_members om
+    WHERE om.org_id = :org_id AND om.user_id = :user_id
+    """
+
+    result = await execute_one_read(sql, {"org_id": org_id, "user_id": user_id})
+    return serialize_row(dict(result)) if result else None
+
+
 async def is_org_member(user_id: str, org_id: str) -> bool:
     """Check if a user is a member of an organization."""
     role = await get_user_role_in_org(user_id, org_id)

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, Users } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchBar } from './search-bar';
 import { EmptyState } from '../empty-state';
@@ -9,8 +9,10 @@ import { AgentsGrid } from '../agents-grid';
 import { LoadingState } from '../loading-state';
 import { Pagination } from '../pagination';
 import { UnifiedAgentCard } from '@/components/ui/unified-agent-card';
+import { useActiveOrg } from '@/hooks/organizations';
+import { useAuth } from '@/components/AuthProvider';
 
-type AgentFilter = 'all' | 'templates';
+type AgentFilter = 'all' | 'templates' | 'my-agents' | 'team-agents';
 
 interface MyAgentsTabProps {
   agentsSearchQuery: string;
@@ -56,10 +58,21 @@ interface MyAgentsTabProps {
   publishingAgentId?: string | null;
 }
 
-const filterOptions = [
-  { value: 'all', label: 'All Workers' },
-  { value: 'templates', label: 'Templates' },
-];
+// Filter options - will be dynamically determined based on org context
+const getFilterOptions = (hasActiveOrg: boolean) => {
+  if (hasActiveOrg) {
+    return [
+      { value: 'all', label: 'All Workers' },
+      { value: 'my-agents', label: 'My Workers' },
+      { value: 'team-agents', label: 'Team Workers' },
+      { value: 'templates', label: 'Templates' },
+    ];
+  }
+  return [
+    { value: 'all', label: 'All Workers' },
+    { value: 'templates', label: 'Templates' },
+  ];
+};
 
 export const MyAgentsTab = ({
   agentsSearchQuery,
@@ -96,14 +109,67 @@ export const MyAgentsTab = ({
   publishingAgentId
 }: MyAgentsTabProps) => {
   const [agentFilter, setAgentFilter] = useState<AgentFilter>('all');
+  const { activeOrgId } = useActiveOrg();
+  const { user } = useAuth();
+  const hasActiveOrg = !!activeOrgId;
+
+  // Get the appropriate filter options based on org context
+  const filterOptions = useMemo(() => getFilterOptions(hasActiveOrg), [hasActiveOrg]);
 
   const templateAgentsCount = useMemo(() => {
     return myTemplates?.length || 0;
   }, [myTemplates]);
 
+  // Split agents into "My Agents" and "Team Agents" when in org context
+  const { myAgents, teamAgents } = useMemo(() => {
+    if (!hasActiveOrg || !user?.id) {
+      return { myAgents: agents, teamAgents: [] };
+    }
+
+    const my: typeof agents = [];
+    const team: typeof agents = [];
+
+    for (const agent of agents) {
+      if (agent.account_id === user.id) {
+        my.push(agent);
+      } else {
+        team.push(agent);
+      }
+    }
+
+    return { myAgents: my, teamAgents: team };
+  }, [agents, hasActiveOrg, user?.id]);
+
+  // Determine which agents to show based on filter
+  const displayAgents = useMemo(() => {
+    if (!hasActiveOrg) {
+      return agents;
+    }
+
+    switch (agentFilter) {
+      case 'my-agents':
+        return myAgents;
+      case 'team-agents':
+        return teamAgents;
+      default:
+        return agents; // 'all' shows all agents
+    }
+  }, [agents, myAgents, teamAgents, agentFilter, hasActiveOrg]);
+
   const handleClearFilters = () => {
     setAgentFilter('all');
     onClearFilters();
+  };
+
+  // Determine if user can delete a given agent (for UI feedback)
+  const canDeleteAgent = (agent: any) => {
+    if (!hasActiveOrg) {
+      // Personal workspace - user can delete their own agents
+      return agent.account_id === user?.id;
+    }
+    // In org context - handled by backend, but we can show indicator
+    // Admins/owners can delete any, members can only delete their own
+    return true; // Let backend handle actual permission check
   };
 
   const renderTemplates = () => {
@@ -209,23 +275,70 @@ export const MyAgentsTab = ({
           <>
             {agentsLoading ? (
               <LoadingState viewMode={viewMode} />
-            ) : agents.length === 0 ? (
+            ) : displayAgents.length === 0 ? (
               <EmptyState
                 hasAgents={(agentsPagination?.total_items || 0) > 0}
                 onCreateAgent={onCreateAgent}
                 onClearFilters={handleClearFilters}
               />
             ) : (
-              <AgentsGrid
-                agents={agents}
-                onEditAgent={onEditAgent}
-                onDeleteAgent={onDeleteAgent}
-                onToggleDefault={onToggleDefault}
-                deleteAgentMutation={deleteAgentMutation}
-                isDeletingAgent={isDeletingAgent}
-                onPublish={onPublishAgent}
-                publishingId={publishingAgentId}
-              />
+              <>
+                {/* Show section headers when in org context with 'all' filter */}
+                {hasActiveOrg && agentFilter === 'all' && myAgents.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      My Workers
+                      <span className="text-sm text-muted-foreground font-normal">({myAgents.length})</span>
+                    </h3>
+                    <AgentsGrid
+                      agents={myAgents}
+                      onEditAgent={onEditAgent}
+                      onDeleteAgent={onDeleteAgent}
+                      onToggleDefault={onToggleDefault}
+                      deleteAgentMutation={deleteAgentMutation}
+                      isDeletingAgent={isDeletingAgent}
+                      onPublish={onPublishAgent}
+                      publishingId={publishingAgentId}
+                    />
+                  </div>
+                )}
+
+                {hasActiveOrg && agentFilter === 'all' && teamAgents.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Team Workers
+                      <span className="text-sm text-muted-foreground font-normal">({teamAgents.length})</span>
+                    </h3>
+                    <AgentsGrid
+                      agents={teamAgents}
+                      onEditAgent={onEditAgent}
+                      onDeleteAgent={onDeleteAgent}
+                      onToggleDefault={onToggleDefault}
+                      deleteAgentMutation={deleteAgentMutation}
+                      isDeletingAgent={isDeletingAgent}
+                      onPublish={onPublishAgent}
+                      publishingId={publishingAgentId}
+                      showCreatorInfo={true}
+                    />
+                  </div>
+                )}
+
+                {/* Show unified grid when not in org context, or when specific filter is selected */}
+                {(!hasActiveOrg || agentFilter !== 'all') && (
+                  <AgentsGrid
+                    agents={displayAgents}
+                    onEditAgent={onEditAgent}
+                    onDeleteAgent={onDeleteAgent}
+                    onToggleDefault={onToggleDefault}
+                    deleteAgentMutation={deleteAgentMutation}
+                    isDeletingAgent={isDeletingAgent}
+                    onPublish={onPublishAgent}
+                    publishingId={publishingAgentId}
+                    showCreatorInfo={hasActiveOrg && agentFilter === 'team-agents'}
+                  />
+                )}
+              </>
             )}
             
             {agentsPagination && (

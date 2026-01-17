@@ -76,6 +76,8 @@ export type AgentsParams = {
   has_agentpress_tools?: boolean;
   tools?: string;
   content_type?: string;
+  include_team_agents?: boolean; // Include team agents when in org context
+  creator_filter?: string; // Filter by creator user ID
 };
 
 // Removed ThreadAgentResponse - agent info now derived from messages/agent runs
@@ -180,6 +182,8 @@ export const getAgents = async (params: AgentsParams = {}): Promise<AgentsRespon
     if (params.has_agentpress_tools !== undefined) queryParams.append('has_agentpress_tools', params.has_agentpress_tools.toString());
     if (params.tools) queryParams.append('tools', params.tools);
     if (params.content_type) queryParams.append('content_type', params.content_type);
+    if (params.include_team_agents !== undefined) queryParams.append('include_team_agents', params.include_team_agents.toString());
+    if (params.creator_filter) queryParams.append('creator_filter', params.creator_filter);
 
     const url = `${API_URL}/agents${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
 

@@ -401,35 +401,85 @@ async def update_agent(
 
 @router.delete("/agents/{agent_id}", summary="Delete Agent", operation_id="delete_agent")
 async def delete_agent(agent_id: str, user_id: str = Depends(verify_and_get_user_id_from_jwt)):
+    """
+    Delete an agent.
+
+    Permission rules:
+    - Personal workspace: user can delete their own agents
+    - Organization context:
+      - Owner/Admin: can delete any agent in the organization
+      - Member: can only delete their own agents
+      - Viewer: cannot delete any agents
+    """
     from core.agents import repo as agents_repo
-    
+    from core.organizations import auth_context_repo
+    from core.organizations.rbac import OrganizationRole
+
     logger.debug(f"Deleting agent: {agent_id}")
-    
+
     try:
-        # Get agent and verify ownership using direct SQL
+        # Get agent details
         agent = await agents_repo.get_agent_by_id(agent_id)
         if not agent:
             raise HTTPException(status_code=404, detail="Worker not found")
-        
-        if agent['account_id'] != user_id:
-            raise HTTPException(status_code=403, detail="Access denied")
-        
+
+        agent_owner_id = agent['account_id']
+        agent_org_id = agent.get('org_id')
+
+        # Check if agent is a default or Suna agent
         if agent['is_default']:
             raise HTTPException(status_code=400, detail="Cannot delete default agent")
-        
+
         if agent.get('metadata', {}).get('is_suna_default', False):
             raise HTTPException(status_code=400, detail="Cannot delete Suna default agent")
-        
+
+        # Determine if user can delete this agent
+        can_delete = False
+        delete_reason = "Access denied"
+
+        if agent_org_id:
+            # Agent belongs to an organization - check org permissions
+            from core.organizations import repo as org_repo
+
+            # Get user's role in the organization
+            member = await org_repo.get_organization_member(agent_org_id, user_id)
+            if not member:
+                raise HTTPException(status_code=403, detail="You are not a member of this organization")
+
+            user_role = member.get('role')
+
+            if user_role in [OrganizationRole.OWNER.value, OrganizationRole.ADMIN.value]:
+                # Owners and admins can delete any agent in the org
+                can_delete = True
+            elif user_role == OrganizationRole.MEMBER.value:
+                # Members can only delete their own agents
+                if agent_owner_id == user_id:
+                    can_delete = True
+                else:
+                    delete_reason = "Members can only delete their own agents"
+            else:
+                # Viewers cannot delete agents
+                delete_reason = "Viewers cannot delete agents"
+        else:
+            # Personal workspace agent - only owner can delete
+            if agent_owner_id == user_id:
+                can_delete = True
+            else:
+                delete_reason = "You can only delete your own agents"
+
+        if not can_delete:
+            raise HTTPException(status_code=403, detail=delete_reason)
+
         # Clean up triggers before deleting agent
         try:
             from core.triggers.trigger_service import get_trigger_service
             trigger_service = get_trigger_service(db)
-            
+
             triggers = await agents_repo.get_agent_triggers(agent_id)
-            
+
             if triggers:
                 logger.debug(f"Cleaning up {len(triggers)} triggers for agent {agent_id}")
-                
+
                 for trigger in triggers:
                     trigger_id = trigger['trigger_id']
                     try:
@@ -439,23 +489,24 @@ async def delete_agent(agent_id: str, user_id: str = Depends(verify_and_get_user
                         logger.warning(f"Failed to clean up trigger {trigger_id}: {str(e)}")
         except Exception as e:
             logger.warning(f"Failed to clean up triggers for agent {agent_id}: {str(e)}")
-        
-        # Delete the agent using direct SQL
-        deleted = await agents_repo.delete_agent(agent_id, user_id)
-        
+
+        # Delete the agent - use the agent owner's ID for the delete query
+        deleted = await agents_repo.delete_agent(agent_id, agent_owner_id)
+
         if not deleted:
-            logger.warning(f"No agent was deleted for agent_id: {agent_id}, user_id: {user_id}")
-            raise HTTPException(status_code=403, detail="Unable to delete agent - permission denied or agent not found")
-        
+            logger.warning(f"No agent was deleted for agent_id: {agent_id}")
+            raise HTTPException(status_code=403, detail="Unable to delete agent")
+
+        # Invalidate cache for the agent owner
         try:
             from core.utils.cache import Cache
-            await Cache.invalidate(f"agent_count_limit:{user_id}")
+            await Cache.invalidate(f"agent_count_limit:{agent_owner_id}")
         except Exception as cache_error:
-            logger.warning(f"Cache invalidation failed for user {user_id}: {str(cache_error)}")
-        
+            logger.warning(f"Cache invalidation failed for user {agent_owner_id}: {str(cache_error)}")
+
         logger.debug(f"Successfully deleted agent: {agent_id}")
         return {"message": "Worker deleted successfully"}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -475,23 +526,41 @@ async def get_agents(
     has_mcp_tools: Optional[bool] = Query(None, description="Filter by agents with MCP tools"),
     has_agentpress_tools: Optional[bool] = Query(None, description="Filter by agents with AgentPress tools"),
     tools: Optional[str] = Query(None, description="Comma-separated list of tools to filter by"),
-    content_type: Optional[str] = Query(None, description="Content type filter: 'agents', 'templates', or None for agents only")
+    content_type: Optional[str] = Query(None, description="Content type filter: 'agents', 'templates', or None for agents only"),
+    include_team_agents: Optional[bool] = Query(True, description="Include team agents when in organization context"),
+    creator_filter: Optional[str] = Query(None, description="Filter by creator user ID")
 ):
+    """
+    List agents for the current user.
+
+    When in organization context (active org set):
+    - include_team_agents=True: returns both user's agents and team members' agents
+    - include_team_agents=False: returns only user's own agents in the org
+    - creator_filter: returns only agents created by the specified user
+
+    When in personal workspace (no active org):
+    - Returns only user's personal agents
+    """
+    from core.organizations import auth_context_repo
+
     try:
         from .agent_service import AgentService, AgentFilters
-        
+
         tools_list = []
         if tools:
             if isinstance(tools, str):
                 tools_list = [tool.strip() for tool in tools.split(',') if tool.strip()]
             else:
                 logger.warning(f"Unexpected tools parameter type: {type(tools)}")
-        
+
+        # Get active organization context
+        org_id = await auth_context_repo.get_user_active_org_id(user_id)
+
         pagination_params = PaginationParams(
             page=page,
             page_size=limit
         )
-        
+
         filters = AgentFilters(
             search=search,
             has_default=has_default,
@@ -500,9 +569,12 @@ async def get_agents(
             tools=tools_list,
             content_type=content_type,
             sort_by=sort_by,
-            sort_order=sort_order
+            sort_order=sort_order,
+            org_id=org_id,
+            include_team_agents=include_team_agents,
+            creator_filter=creator_filter
         )
-        
+
         client = await db.client
         agent_service = AgentService(client)
         paginated_result = await agent_service.get_agents_paginated(
@@ -510,12 +582,12 @@ async def get_agents(
             pagination_params=pagination_params,
             filters=filters
         )
-        
+
         agent_responses = []
         for agent_data in paginated_result.data:
             agent_response = AgentResponse(**agent_data)
             agent_responses.append(agent_response)
-        
+
         return AgentsResponse(
             agents=agent_responses,
             pagination=PaginationInfo(
@@ -527,7 +599,7 @@ async def get_agents(
                 has_previous=paginated_result.pagination.has_previous
             )
         )
-        
+
     except HTTPException:
         # Re-raise HTTPExceptions (like 401, 429) as-is without wrapping
         raise
