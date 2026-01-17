@@ -9,6 +9,7 @@ from .common import (
 )
 
 from .agents import (
+    AgentVisibility,
     AgentCreateRequest,
     AgentUpdateRequest,
     AgentResponse,
@@ -86,6 +87,7 @@ from .org_billing import (
 
 __all__ = [
     # Agent models
+    "AgentVisibility",
     "AgentCreateRequest",
     "AgentUpdateRequest",
     "AgentResponse",

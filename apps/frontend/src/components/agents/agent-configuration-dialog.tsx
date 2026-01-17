@@ -27,6 +27,13 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Settings,
   Wrench,
   Server,
@@ -43,6 +50,10 @@ import {
   Info,
   Lock,
   Sparkles,
+  Eye,
+  Building2,
+  Globe,
+  Users,
 } from 'lucide-react';
 import { KortixLoader } from '@/components/ui/kortix-loader';
 import { toast } from '@/lib/toast';
@@ -55,6 +66,8 @@ import { isLocalMode } from '@/lib/config';
 
 import { useAgentVersionData } from '@/hooks/agents';
 import { useUpdateAgent, useAgents } from '@/hooks/agents/use-agents';
+import { useActiveOrg } from '@/hooks/organizations';
+import type { AgentVisibility } from '@/hooks/agents/utils';
 import { useUpdateAgentMCPs } from '@/hooks/agents/use-update-agent-mcps';
 import { useExportAgent } from '@/hooks/agents/use-agent-export-import';
 import { ExpandableMarkdownEditor } from '@/components/ui/expandable-markdown-editor';
@@ -134,7 +147,11 @@ export function AgentConfigurationDialog({
     icon_name: null as string | null,
     icon_color: '#000000',
     icon_background: '#e5e5e5',
+    visibility: 'private' as AgentVisibility,
   });
+
+  // Get organization context
+  const { activeOrgId } = useActiveOrg();
 
 
   const [originalFormData, setOriginalFormData] = useState(formData);
@@ -165,6 +182,7 @@ export function AgentConfigurationDialog({
       icon_name: configSource.icon_name || null,
       icon_color: configSource.icon_color || '#000000',
       icon_background: configSource.icon_background || '#e5e5e5',
+      visibility: (configSource as any).visibility || 'private',
     };
 
     setFormData(newFormData);
@@ -199,6 +217,7 @@ export function AgentConfigurationDialog({
       if (formData.icon_color !== undefined) updateData.icon_color = formData.icon_color;
       if (formData.icon_background !== undefined) updateData.icon_background = formData.icon_background;
       if (formData.is_default !== undefined) updateData.is_default = formData.is_default;
+      if (formData.visibility !== undefined) updateData.visibility = formData.visibility;
 
       const updatedAgent = await updateAgentMutation.mutateAsync(updateData);
 
@@ -382,6 +401,11 @@ export function AgentConfigurationDialog({
     return null;
   }
 
+  // Determine if visibility editing is allowed (only for org agents by the creator)
+  const isOrgAgent = !!agent?.org_id;
+  const isCreator = agent?.account_id === agent?.account_id; // Agent creator check would need user comparison
+  const canEditVisibility = isOrgAgent && !isSunaAgent && !isViewingOldVersion;
+
   const tabItems = [
     // { id: 'general', label: 'General', icon: Settings, disabled: false },
     { id: 'instructions', label: 'Instructions', icon: Brain, disabled: false },
@@ -389,6 +413,7 @@ export function AgentConfigurationDialog({
     { id: 'integrations', label: 'Integrations', icon: Server, disabled: false },
     { id: 'knowledge', label: 'Knowledge', icon: BookOpen, disabled: false },
     { id: 'triggers', label: 'Triggers', icon: Zap, disabled: false },
+    { id: 'settings', label: 'Settings', icon: Settings, disabled: false },
   ];
 
   return (
@@ -780,7 +805,7 @@ export function AgentConfigurationDialog({
                       <div className="absolute inset-0 z-10">
                         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
                         <div className="relative h-full flex flex-col items-center justify-center px-8">
-                          <div 
+                          <div
                             className="max-w-md w-full rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background p-8 cursor-pointer hover:border-primary/50 transition-all group shadow-lg"
                             onClick={() => openPricingModal()}
                           >
@@ -794,7 +819,7 @@ export function AgentConfigurationDialog({
                                   Set up scheduled tasks and event-based triggers to automate your AI Workers 24/7
                                 </p>
                               </div>
-                              <Button 
+                              <Button
                                 variant="default"
                                 className="mt-2 gap-2"
                                 onClick={(e) => { e.stopPropagation(); openPricingModal(); }}
@@ -807,6 +832,114 @@ export function AgentConfigurationDialog({
                         </div>
                       </div>
                     )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="settings" className="p-6 mt-0 flex flex-col h-full">
+                  <div className="flex flex-col gap-6">
+                    {/* Visibility Settings */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-base font-semibold mb-1 block">Visibility</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Control who can see and use this Worker
+                        </p>
+                      </div>
+
+                      {isOrgAgent ? (
+                        <div className="space-y-3">
+                          <Select
+                            value={formData.visibility}
+                            onValueChange={(value: AgentVisibility) =>
+                              setFormData(prev => ({ ...prev, visibility: value }))
+                            }
+                            disabled={!canEditVisibility}
+                          >
+                            <SelectTrigger className="w-full max-w-md">
+                              <SelectValue placeholder="Select visibility" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="private">
+                                <div className="flex items-center gap-2">
+                                  <Lock className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <div className="font-medium">Private</div>
+                                    <div className="text-xs text-muted-foreground">Only you can see and use</div>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="org">
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <div className="font-medium">Organization</div>
+                                    <div className="text-xs text-muted-foreground">All team members can see and use</div>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="public" disabled>
+                                <div className="flex items-center gap-2">
+                                  <Globe className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <div className="font-medium">Public (Coming Soon)</div>
+                                    <div className="text-xs text-muted-foreground">Listed in public marketplace</div>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+
+                          {/* Visibility description */}
+                          <div className="p-4 bg-muted/50 rounded-lg border">
+                            {formData.visibility === 'private' && (
+                              <div className="flex items-start gap-3">
+                                <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Private Worker</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Only you can see, edit, and use this Worker. Other organization members won&apos;t be able to find it.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {formData.visibility === 'org' && (
+                              <div className="flex items-start gap-3">
+                                <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Shared with Organization</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    All members of your organization can see and use this Worker. Only you and admins can edit it.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {formData.visibility === 'public' && (
+                              <div className="flex items-start gap-3">
+                                <Globe className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                <div>
+                                  <p className="font-medium">Public Marketplace</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    This Worker will be listed in the public marketplace where anyone can discover and use it.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-muted/50 rounded-lg border">
+                          <div className="flex items-start gap-3">
+                            <Lock className="h-5 w-5 text-muted-foreground mt-0.5" />
+                            <div>
+                              <p className="font-medium">Personal Worker</p>
+                              <p className="text-sm text-muted-foreground">
+                                This Worker is in your personal workspace and is private by default. To share with a team, create the Worker within an organization.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
               </div>

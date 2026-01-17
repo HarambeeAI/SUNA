@@ -678,6 +678,8 @@ async def create_agent(
             print(f"[DEBUG] create_agent: Creating with icon_name={agent_data.icon_name or 'bot'}, icon_color={agent_data.icon_color or '#000000'}, icon_background={agent_data.icon_background or '#F3F4F6'}")
         
         # Create agent using direct SQL (with org_id if in organization context)
+        # Visibility defaults based on context: 'org' for organization agents, 'private' for personal
+        visibility = agent_data.visibility.value if agent_data.visibility else None
         agent = await agents_repo.create_agent(
             account_id=user_id,
             name=agent_data.name,
@@ -685,7 +687,8 @@ async def create_agent(
             icon_color=agent_data.icon_color or "#000000",
             icon_background=agent_data.icon_background or "#F3F4F6",
             is_default=agent_data.is_default or False,
-            org_id=org_id
+            org_id=org_id,
+            visibility=visibility
         )
 
         # Increment org usage if in organization context

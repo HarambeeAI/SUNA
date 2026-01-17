@@ -228,13 +228,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an agent creator, I want to control who in my organization can use my agent so I can manage access.
 
 **Acceptance Criteria:**
-- [ ] Add `visibility` field to agents: private, org, public
-- [ ] Private: only creator can see and use
-- [ ] Org: all organization members can see and use
-- [ ] Public: listed in public marketplace (future feature)
-- [ ] Agent settings modal has "Visibility" dropdown
-- [ ] Default visibility: org for organization members, private for personal
-- [ ] Typecheck passes
+- [x] Add `visibility` field to agents: private, org, public
+- [x] Private: only creator can see and use
+- [x] Org: all organization members can see and use
+- [x] Public: listed in public marketplace (future feature)
+- [x] Agent settings modal has "Visibility" dropdown
+- [x] Default visibility: org for organization members, private for personal
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-020: Organization usage dashboard

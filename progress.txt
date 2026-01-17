@@ -725,3 +725,57 @@
   - Backend delete endpoint checks both org membership and role permissions
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 19 - US-019: Agent sharing permissions
+- What was implemented:
+  - Database: Created migration 20260117220000_agent_visibility.sql
+    - Added agent_visibility enum type: private, org, public
+    - Added visibility column to agents table with NOT NULL DEFAULT 'private'
+    - Created indexes for visibility filtering: idx_agents_visibility, idx_agents_org_visibility
+    - Updated RLS policies for visibility-based access control:
+      - agents_select_policy: Creator sees all, org members see org/public, any auth sees public
+      - agents_insert_policy: Same as before (owner or org member)
+      - agents_update_policy: Creator can update any, org admins can update org/public
+      - agents_delete_policy: Creator can delete own, org admins can delete org/public
+    - Migration updates existing agents: org agents default to 'org', personal to 'private'
+    - Added helper functions: get_visible_org_agents, update_agent_visibility
+  - Backend: Updated API models
+    - Added AgentVisibility enum to backend/core/api_models/agents.py
+    - Added visibility field to AgentCreateRequest, AgentUpdateRequest, AgentResponse
+    - Exported AgentVisibility from backend/core/api_models/__init__.py
+  - Backend: Updated repository and CRUD
+    - Updated list_agents query to include visibility column
+    - Updated list_org_agents_with_creators to filter by visibility (owner sees all, others see org/public)
+    - Updated get_agent_by_id to include visibility column
+    - Updated create_agent to accept visibility param (defaults: 'org' for org agents, 'private' for personal)
+    - Updated update_agent valid_columns to include visibility
+  - Backend: Updated agent_crud.py
+    - create_agent endpoint now passes visibility to repo
+  - Frontend: Updated types
+    - Added AgentVisibility type to hooks/agents/utils.ts
+    - Added visibility field to Agent, AgentCreateRequest, AgentUpdateRequest types
+  - Frontend: Added visibility settings UI
+    - Added "Settings" tab to agent-configuration-dialog.tsx
+    - Visibility dropdown with Private, Organization, and Public (disabled/coming soon) options
+    - Context-aware UI: Shows dropdown for org agents, shows info message for personal agents
+    - Descriptive explanation box updates based on selected visibility
+    - Visibility changes are saved with other settings via handleSaveAll
+- Files changed:
+  - backend/supabase/migrations/20260117220000_agent_visibility.sql (new)
+  - backend/core/api_models/agents.py (modified - added AgentVisibility enum, updated models)
+  - backend/core/api_models/__init__.py (modified - exports AgentVisibility)
+  - backend/core/agents/repo.py (modified - visibility in queries and create_agent)
+  - backend/core/agents/agent_crud.py (modified - passes visibility to create_agent)
+  - apps/frontend/src/hooks/agents/utils.ts (modified - added AgentVisibility type, updated interfaces)
+  - apps/frontend/src/components/agents/agent-configuration-dialog.tsx (modified - added Settings tab with visibility UI)
+  - PRD.md (marked US-019 ACs as complete)
+- Learnings for future iterations:
+  - Visibility enum: private (creator only), org (organization members), public (marketplace)
+  - Default visibility is context-aware: 'org' for organization agents, 'private' for personal agents
+  - Only agent creators can change visibility (enforced in migration's update_agent_visibility function)
+  - Personal workspace agents can only be 'private' (no org/public options)
+  - RLS policies use visibility in combination with org membership for access control
+  - Frontend uses Select component from shadcn/ui for dropdown
+  - Public visibility is disabled in UI (future marketplace feature)
+  - Browser verification still pending - requires manual testing
+---

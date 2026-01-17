@@ -1,10 +1,18 @@
 """Agent-related API models."""
 
+from enum import Enum
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 # Import PaginationInfo directly to avoid forward reference issues
 from .common import PaginationInfo
+
+
+class AgentVisibility(str, Enum):
+    """Agent visibility levels for sharing permissions."""
+    PRIVATE = "private"  # Only creator can see and use
+    ORG = "org"          # All organization members can see and use
+    PUBLIC = "public"    # Listed in public marketplace (future feature)
 
 
 class AgentCreateRequest(BaseModel):
@@ -18,6 +26,7 @@ class AgentCreateRequest(BaseModel):
     icon_name: Optional[str] = None
     icon_color: Optional[str] = None
     icon_background: Optional[str] = None
+    visibility: Optional[AgentVisibility] = None  # Defaults based on context
 
 
 class AgentUpdateRequest(BaseModel):
@@ -34,6 +43,7 @@ class AgentUpdateRequest(BaseModel):
     icon_color: Optional[str] = None
     icon_background: Optional[str] = None
     replace_mcps: Optional[bool] = None
+    visibility: Optional[AgentVisibility] = None
 
 
 class AgentVersionResponse(BaseModel):
@@ -85,6 +95,8 @@ class AgentResponse(BaseModel):
     current_version: Optional[AgentVersionResponse] = None
     metadata: Optional[Dict[str, Any]] = None
     account_id: Optional[str] = None  # Internal field, may not always be needed in response
+    org_id: Optional[str] = None  # Organization ID for multi-tenant support
+    visibility: Optional[AgentVisibility] = AgentVisibility.PRIVATE  # Agent visibility level
 
 
 class AgentsResponse(BaseModel):

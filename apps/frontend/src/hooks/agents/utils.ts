@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/client";
 
 const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
+// Agent visibility levels for sharing permissions
+export type AgentVisibility = 'private' | 'org' | 'public';
+
 export type Agent = {
   agent_id: string;
   account_id?: string;
@@ -33,6 +36,7 @@ export type Agent = {
   current_version_id?: string | null;
   version_count?: number;
   current_version?: AgentVersion | null;
+  visibility?: AgentVisibility; // Agent visibility level
   metadata?: {
     template_name?: string;
     kortix_template_id?: string;
@@ -101,6 +105,7 @@ export type AgentCreateRequest = {
   icon_name?: string | null;
   icon_color?: string | null;
   icon_background?: string | null;
+  visibility?: AgentVisibility; // Defaults based on context (org vs personal)
 };
 
 export type AgentVersionCreateRequest = {
@@ -159,6 +164,7 @@ export type AgentUpdateRequest = {
   icon_color?: string | null;
   icon_background?: string | null;
   replace_mcps?: boolean;
+  visibility?: AgentVisibility;
 };
 
 export const getAgents = async (params: AgentsParams = {}): Promise<AgentsResponse> => {

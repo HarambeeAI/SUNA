@@ -138,6 +138,7 @@ async def list_agents(
         a.icon_color,
         a.icon_background,
         a.is_default,
+        a.visibility,
         a.current_version_id,
         a.version_count,
         a.metadata,
@@ -211,6 +212,7 @@ async def list_org_agents_with_creators(
     where_sql = " AND ".join(where_clauses)
 
     # Query all org agents with is_mine flag
+    # Visibility filtering: users see their own agents (any visibility) + org/public visible team agents
     sql = f"""
     SELECT
         a.agent_id,
@@ -222,6 +224,7 @@ async def list_org_agents_with_creators(
         a.icon_color,
         a.icon_background,
         a.is_default,
+        a.visibility,
         a.current_version_id,
         a.version_count,
         a.metadata,
@@ -233,6 +236,10 @@ async def list_org_agents_with_creators(
         COUNT(*) FILTER (WHERE a.account_id != :user_id) OVER() AS team_count
     FROM agents a
     WHERE {where_sql}
+    AND (
+        a.account_id = :user_id
+        OR a.visibility IN ('org', 'public')
+    )
     ORDER BY
         CASE WHEN a.account_id = :user_id THEN 0 ELSE 1 END,
         {sort_by} {sort_direction}
@@ -284,8 +291,8 @@ async def get_org_agent_creators(org_id: str) -> List[Dict[str, Any]]:
 
 async def get_agent_by_id(agent_id: str, account_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
     columns = """
-        agent_id, account_id, name, description, is_default, is_public, tags,
-        icon_name, icon_color, icon_background, created_at, updated_at,
+        agent_id, account_id, org_id, name, description, is_default, is_public, tags,
+        icon_name, icon_color, icon_background, visibility, created_at, updated_at,
         current_version_id, version_count, metadata
     """
     
@@ -323,16 +330,23 @@ async def create_agent(
     is_default: bool = False,
     description: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    org_id: Optional[str] = None
+    org_id: Optional[str] = None,
+    visibility: Optional[str] = None
 ) -> Dict[str, Any]:
+    # Set default visibility based on context:
+    # - Organization agents: default to 'org' (visible to team)
+    # - Personal agents: default to 'private'
+    if visibility is None:
+        visibility = "org" if org_id else "private"
+
     sql = """
     INSERT INTO agents (
         account_id, name, description, icon_name, icon_color, icon_background,
-        is_default, version_count, metadata, org_id, created_at, updated_at
+        is_default, version_count, metadata, org_id, visibility, created_at, updated_at
     )
     VALUES (
         :account_id, :name, :description, :icon_name, :icon_color, :icon_background,
-        :is_default, 1, :metadata, :org_id, :created_at, :updated_at
+        :is_default, 1, :metadata, :org_id, :visibility, :created_at, :updated_at
     )
     RETURNING *
     """
@@ -349,6 +363,7 @@ async def create_agent(
         "is_default": is_default,
         "metadata": metadata or {},
         "org_id": org_id,
+        "visibility": visibility,
         "created_at": now,
         "updated_at": now,
     }, commit=True)
@@ -368,7 +383,7 @@ async def update_agent(
     
     valid_columns = {
         "name", "description", "icon_name", "icon_color", "icon_background",
-        "is_default", "current_version_id", "version_count", "metadata", "updated_at"
+        "is_default", "current_version_id", "version_count", "metadata", "visibility", "updated_at"
     }
     
     set_parts = []
