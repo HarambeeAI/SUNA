@@ -180,6 +180,7 @@ class OrgBillingWebhookHandler:
         Handle customer.subscription.updated event for organization subscriptions.
 
         Updates the organization billing status based on subscription status.
+        Handles cancel_at_period_end gracefully - subscription stays active until period ends.
         Returns True if this was an organization subscription, False otherwise.
         """
         subscription = event.data.object
@@ -199,15 +200,27 @@ class OrgBillingWebhookHandler:
 
         org_id = org['id']
         subscription_status = subscription.get('status')
+        cancel_at_period_end = subscription.get('cancel_at_period_end', False)
 
         logger.info(
             f"[ORG WEBHOOK] Processing subscription.updated for org {org_id}, "
-            f"status={subscription_status}"
+            f"status={subscription_status}, cancel_at_period_end={cancel_at_period_end}"
         )
 
         try:
             # Map Stripe subscription status to our billing status
+            # If cancel_at_period_end is set but subscription is still active,
+            # the subscription remains active until the period ends
             billing_status = _map_subscription_status(subscription_status)
+
+            # Log cancellation scheduled for analytics
+            if cancel_at_period_end and subscription_status == 'active':
+                cancel_at = subscription.get('cancel_at')
+                logger.info(
+                    f"[ORG BILLING ANALYTICS] org_subscription_cancel_scheduled "
+                    f"org_id={org_id} plan_tier={org.get('plan_tier', 'unknown')} "
+                    f"cancel_at={cancel_at}"
+                )
 
             await repo.update_organization_billing(
                 org_id=org_id,
@@ -241,7 +254,18 @@ async def _find_org_by_subscription_id(subscription_id: str) -> Optional[Dict[st
 
 
 def _map_subscription_status(stripe_status: str) -> str:
-    """Map Stripe subscription status to our billing status."""
+    """Map Stripe subscription status to our billing status.
+
+    Important: When a user cancels via the billing portal, Stripe sets
+    cancel_at_period_end=true but the status remains 'active' until
+    the subscription actually ends. This means:
+    - The user keeps access to paid features until the period ends
+    - The subscription.deleted webhook fires when it actually ends
+    - Only then do we downgrade to free tier
+
+    This provides a graceful cancellation experience where users don't
+    lose access immediately.
+    """
     status_mapping = {
         'active': 'active',
         'past_due': 'past_due',

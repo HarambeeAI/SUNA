@@ -267,12 +267,12 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a paid customer, I want to manage my subscription so I can update payment methods and view invoices.
 
 **Acceptance Criteria:**
-- [ ] "Manage Billing" button in settings opens Stripe Customer Portal
-- [ ] POST `/v1/billing/portal` creates portal session with return URL
-- [ ] Portal allows: update payment method, view invoices, cancel subscription
-- [ ] After portal actions, user redirected back to settings with success message
-- [ ] Handle subscription cancellation gracefully: downgrade to free at period end
-- [ ] Typecheck passes
+- [x] "Manage Billing" button in settings opens Stripe Customer Portal
+- [x] POST `/v1/billing/portal` creates portal session with return URL
+- [x] Portal allows: update payment method, view invoices, cancel subscription
+- [x] After portal actions, user redirected back to settings with success message
+- [x] Handle subscription cancellation gracefully: downgrade to free at period end
+- [x] Typecheck passes
 
 ### US-023: Email notifications for billing events
 **Description:** As an organization owner, I want email notifications for billing events so I stay informed about my subscription.

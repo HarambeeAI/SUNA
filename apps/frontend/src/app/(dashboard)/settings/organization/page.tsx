@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Building2,
   CreditCard,
@@ -102,11 +102,46 @@ const getProgressColor = (percent: number): string => {
 
 export default function OrganizationSettingsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const orgId = searchParams.get('org');
+  const billingAction = searchParams.get('billing');
+  const checkoutStatus = searchParams.get('checkout');
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
   const queryClient = useQueryClient();
+
+  // Handle billing portal and checkout redirect messages
+  useEffect(() => {
+    if (!orgId) return;
+
+    // Handle return from billing portal
+    if (billingAction === 'updated') {
+      toast.success('Billing settings updated successfully');
+      // Clean up URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete('billing');
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+
+    // Handle return from checkout
+    if (checkoutStatus === 'success') {
+      toast.success('Welcome to Pro! Your subscription is now active.');
+      // Invalidate org data to reflect new plan
+      queryClient.invalidateQueries({ queryKey: ['organization', orgId] });
+      queryClient.invalidateQueries({ queryKey: ['organization-usage', orgId] });
+      // Clean up URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      router.replace(url.pathname + url.search, { scroll: false });
+    } else if (checkoutStatus === 'canceled') {
+      toast.info('Checkout canceled. You can upgrade anytime.');
+      // Clean up URL params
+      const url = new URL(window.location.href);
+      url.searchParams.delete('checkout');
+      router.replace(url.pathname + url.search, { scroll: false });
+    }
+  }, [orgId, billingAction, checkoutStatus, queryClient, router]);
 
   // Fetch organization data
   const {
@@ -164,7 +199,7 @@ export default function OrganizationSettingsPage() {
   const billingPortalMutation = useMutation({
     mutationFn: () =>
       createOrgBillingPortalSession(orgId!, {
-        return_url: `${window.location.origin}/settings/organization?org=${orgId}`,
+        return_url: `${window.location.origin}/settings/organization?org=${orgId}&billing=updated`,
       }),
     onSuccess: (data) => {
       // Redirect to Stripe billing portal
