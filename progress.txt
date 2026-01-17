@@ -1352,3 +1352,106 @@
   - Backend py_compile confirms API endpoints are valid
   - Code review of the page confirms all AC requirements are implemented
 ---
+
+## Iteration 32 - US-010: Browser verification (team members management UI)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (invitations_api.py, api.py)
+  - Team members page exists at /settings/members with layout.tsx
+  - All UI components verified: Table, Dialog, DropdownMenu, Select, AlertDialog, Card, Badge, Button, Input, Label, Skeleton
+  - All API functions verified: getOrganizationMembers, updateOrganizationMemberRole, removeOrganizationMember, getOrganizationInvitations, createInvitation, revokeInvitation
+  - Page implements all acceptance criteria:
+    - Members table with email, user_id, role, joined date, actions columns (lines 359-448)
+    - "Invite Member" button opens modal with email input and role selection (lines 271-344)
+    - Change role dropdown for non-owner members (lines 381-408)
+    - Remove member button with AlertDialog confirmation (lines 417-434, 537-563)
+    - Pending invitations section with resend and revoke options (lines 451-535)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/settings/members/page.tsx
+  - apps/frontend/src/app/(dashboard)/settings/members/layout.tsx
+  - apps/frontend/src/lib/api/organizations.ts
+  - backend/core/organizations/invitations_api.py
+  - backend/core/organizations/api.py
+- Learnings for future iterations:
+  - Browser verification follows same pattern as US-009
+  - Page uses ?org= query param for organization context
+  - AlertDialog component used for destructive action confirmations
+  - Role dropdown disabled for owners (cannot change owner role)
+---
+
+## Iteration 33 - US-011: Browser verification (organization switcher)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (auth_context_api.py, auth_context_repo.py)
+  - Organization switcher exists in NavUserWithTeams component (nav-user-with-teams.tsx)
+  - All UI components verified: DropdownMenu, Dialog, Input, Label, Button
+  - All hooks verified: useActiveOrg, useSwitchOrg, useCreateOrg
+  - All API functions verified: getAuthContext, switchOrganization, createOrganization
+  - Organization switcher implements all acceptance criteria:
+    - "Organizations" section in dropdown with Personal and available orgs (lines 413-457)
+    - Checkmark indicator for active org (lines 427-429, 443-445)
+    - Switching context calls mutateAsync and invalidates queries (lines 201-209)
+    - "Create Organization" option with Plus icon (lines 448-457)
+    - Building2 icon for orgs, User icon for personal workspace (lines 424, 440)
+- Files verified:
+  - apps/frontend/src/components/sidebar/nav-user-with-teams.tsx
+  - apps/frontend/src/hooks/organizations/index.ts
+  - apps/frontend/src/hooks/organizations/use-org-context.ts
+  - apps/frontend/src/lib/api/organizations.ts
+  - backend/core/organizations/auth_context_api.py
+  - backend/core/organizations/auth_context_repo.py
+- Learnings for future iterations:
+  - Organization switcher is embedded in the user dropdown menu
+  - useActiveOrg hook provides activeOrg, activeOrgId, availableOrgs
+  - useSwitchOrg invalidates org-context, user-threads, and agents queries
+  - Create org dialog auto-generates slug from name
+---
+
+## Iteration 34 - US-016: Browser verification (template marketplace UI)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (templates/api.py)
+  - Template marketplace page exists at /templates
+  - All UI components verified: Card, Badge, Button, Input, Dialog, Tabs, ScrollArea
+  - All API functions verified: getTemplates, getTemplateCategories, createAgentFromTemplate
+  - Page implements all acceptance criteria:
+    - Grid of template cards with icon, name, description, category badge, "Use Template" button (TemplateCard component)
+    - Category filter tabs at top (Tabs component with "All Templates" + categories)
+    - Search bar with debounced real-time filtering (300ms debounce)
+    - Template detail modal with full description, example prompts, configuration info (TemplateDetailModal)
+    - "Use Template" dialog with agent name input and Create Agent button (UseTemplateDialog)
+    - Success toast with redirect to /agents/config/{agent_id} (lines 399-404)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/templates/page.tsx
+  - apps/frontend/src/lib/api/templates.ts
+  - backend/core/templates/api.py
+- Learnings for future iterations:
+  - Template marketplace page uses responsive grid: sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4
+  - Uses AgentAvatar component for consistent icon rendering
+  - DynamicIcon from lucide-react/dynamic for category icons
+  - createAgentFromTemplate returns { agent_id } for navigation
+---
+
+## Iteration 35 - US-017: Browser verification (template preview in agent creation)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (templates/api.py)
+  - Agent creation modal exists at components/agents/agent-creation-modal.tsx
+  - All UI components verified: Dialog, Tabs, TabsList, TabsTrigger, TabsContent, Input, Label, Button, Badge, ScrollArea, Textarea
+  - All API functions verified: getTemplates, getTemplateCategories, createAgentFromTemplate
+  - Modal implements all acceptance criteria:
+    - Two tabs: "Blank Agent" and "From Template" (lines 327-338, Tabs with TabsTrigger values)
+    - From Template tab shows mini template browser with search + category filter + template cards (lines 408-493)
+    - Selecting template pre-fills name and shows system_prompt/tools preview (lines 131-134, 496-588)
+    - User can edit agent name before creating (lines 530-542, Input component)
+    - "View Full Template" link opens MarketplaceAgentPreviewDialog (lines 517-525, 676-685)
+- Files verified:
+  - apps/frontend/src/components/agents/agent-creation-modal.tsx
+  - apps/frontend/src/lib/api/templates.ts
+  - backend/core/templates/api.py
+- Learnings for future iterations:
+  - Agent creation modal uses Tabs component for blank/template selection
+  - Template preview reuses same patterns as marketplace (AgentAvatar, Badge, search/filter)
+  - createAgentFromTemplate is dynamically imported when creating
+  - handlePreviewInstall converts MarketplaceTemplate back to AgentTemplate format
+---

@@ -209,7 +209,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] User can still edit all fields before creating
 - [x] "View Full Template" link opens template detail modal
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-018: Shared agents within organization
 **Description:** As an organization member, I want to see agents created by teammates so we can collaborate on shared workflows.
