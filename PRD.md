@@ -197,7 +197,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] "Use Template" opens dialog: enter agent name, confirm, creates agent
 - [x] Success toast: "Agent created! Redirecting..." then navigate to new agent thread
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-017: Template preview in agent creation
 **Description:** As a user creating an agent, I want to optionally start from a template so I don't build from scratch.
