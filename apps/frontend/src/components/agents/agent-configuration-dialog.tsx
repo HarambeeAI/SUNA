@@ -60,6 +60,11 @@ import {
   Trash2,
   ExternalLink,
   Link2,
+  Send,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { KortixLoader } from '@/components/ui/kortix-loader';
 import { toast } from '@/lib/toast';
@@ -94,6 +99,12 @@ import {
   getShareLinkUrl,
   type ShareLink,
 } from '@/lib/api/share-links';
+import {
+  createTemplateSubmission,
+  listMySubmissions,
+  type TemplateSubmission,
+} from '@/lib/api/template-submissions';
+import { getTemplateCategories, type TemplateCategory } from '@/lib/api/templates';
 
 interface AgentConfigurationDialogProps {
   open: boolean;
@@ -144,6 +155,18 @@ export function AgentConfigurationDialog({
   const [isLoadingShareLinks, setIsLoadingShareLinks] = useState(false);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [isDeletingShareLink, setIsDeletingShareLink] = useState<string | null>(null);
+
+  // Template submission state
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+  const [isSubmittingTemplate, setIsSubmittingTemplate] = useState(false);
+  const [pendingSubmission, setPendingSubmission] = useState<TemplateSubmission | null>(null);
+  const [templateCategories, setTemplateCategories] = useState<TemplateCategory[]>([]);
+  const [submitForm, setSubmitForm] = useState({
+    template_name: '',
+    template_description: '',
+    category_id: '',
+    use_cases: ['', '', ''],
+  });
   
   // Debug state changes
   useEffect(() => {
@@ -175,6 +198,30 @@ export function AgentConfigurationDialog({
     }
 
     loadShareLinks();
+  }, [activeTab, agentId]);
+
+  // Load template categories and check for pending submissions when settings tab is active
+  useEffect(() => {
+    async function loadTemplateData() {
+      if (activeTab !== 'settings' || !agentId) return;
+
+      try {
+        // Load categories
+        const categoriesResponse = await getTemplateCategories();
+        setTemplateCategories(categoriesResponse.categories || []);
+
+        // Check for existing pending submission for this agent
+        const submissionsResponse = await listMySubmissions({ status: 'pending' });
+        const existingSubmission = submissionsResponse.submissions.find(
+          (s: TemplateSubmission) => s.agent_id === agentId
+        );
+        setPendingSubmission(existingSubmission || null);
+      } catch (error) {
+        console.error('Failed to load template data:', error);
+      }
+    }
+
+    loadTemplateData();
   }, [activeTab, agentId]);
 
   const [formData, setFormData] = useState({
@@ -488,6 +535,48 @@ export function AgentConfigurationDialog({
       toast.error('Failed to revoke share link');
     } finally {
       setIsDeletingShareLink(null);
+    }
+  };
+
+  // Template submission handlers
+  const handleOpenSubmitDialog = () => {
+    setSubmitForm({
+      template_name: formData.name || '',
+      template_description: '',
+      category_id: '',
+      use_cases: ['', '', ''],
+    });
+    setIsSubmitDialogOpen(true);
+  };
+
+  const handleSubmitAsTemplate = async () => {
+    if (!submitForm.template_name.trim()) {
+      toast.error('Template name is required');
+      return;
+    }
+
+    setIsSubmittingTemplate(true);
+    try {
+      const useCases = submitForm.use_cases.filter(uc => uc.trim());
+      const submission = await createTemplateSubmission({
+        agent_id: agentId,
+        template_name: submitForm.template_name.trim(),
+        template_description: submitForm.template_description.trim() || undefined,
+        category_id: submitForm.category_id || undefined,
+        use_cases: useCases.length > 0 ? useCases : undefined,
+      });
+
+      setPendingSubmission(submission);
+      setIsSubmitDialogOpen(false);
+      toast.success('Template submitted for review!', {
+        description: 'You will be notified when your template is approved.',
+      });
+    } catch (error: any) {
+      console.error('Failed to submit template:', error);
+      const message = error?.message || 'Failed to submit template for review';
+      toast.error(message);
+    } finally {
+      setIsSubmittingTemplate(false);
     }
   };
 
@@ -1170,6 +1259,55 @@ export function AgentConfigurationDialog({
                         )}
                       </div>
                     </div>
+
+                    {/* Submit as Template Section */}
+                    <div className="space-y-4 border-t pt-6">
+                      <div>
+                        <Label className="text-base font-semibold mb-1 block">Submit to Marketplace</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Share your Worker as a template for others to use
+                        </p>
+                      </div>
+
+                      {pendingSubmission ? (
+                        <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                          <div className="flex items-start gap-3">
+                            <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5" />
+                            <div>
+                              <p className="font-medium text-yellow-800 dark:text-yellow-200">Submission Pending Review</p>
+                              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                Your template &quot;{pendingSubmission.template_name}&quot; is waiting for admin approval.
+                                Submitted on {new Date(pendingSubmission.submitted_at).toLocaleDateString()}.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <Button
+                            onClick={handleOpenSubmitDialog}
+                            disabled={isSunaAgent}
+                            variant="outline"
+                            className="w-full max-w-md"
+                          >
+                            <Send className="h-4 w-4 mr-2" />
+                            Submit as Template
+                          </Button>
+
+                          <div className="p-4 bg-muted/30 rounded-lg border border-dashed">
+                            <div className="flex items-start gap-3">
+                              <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
+                              <div>
+                                <p className="text-sm text-muted-foreground">
+                                  Submit this Worker as a template for the marketplace. Once approved,
+                                  other users can discover and use your template to create their own Workers.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
               </div>
@@ -1217,6 +1355,112 @@ export function AgentConfigurationDialog({
         agentDescription={agent?.description}
         onIconUpdate={handleIconChange}
       />
+
+      {/* Template Submission Dialog */}
+      <Dialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Submit as Template
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Template Name *</Label>
+              <Input
+                id="template-name"
+                value={submitForm.template_name}
+                onChange={(e) => setSubmitForm(prev => ({ ...prev, template_name: e.target.value }))}
+                placeholder="Enter a name for your template"
+                maxLength={255}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-description">Description</Label>
+              <Textarea
+                id="template-description"
+                value={submitForm.template_description}
+                onChange={(e) => setSubmitForm(prev => ({ ...prev, template_description: e.target.value }))}
+                placeholder="Describe what your template does and who it's for..."
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="template-category">Category</Label>
+              <Select
+                value={submitForm.category_id}
+                onValueChange={(value) => setSubmitForm(prev => ({ ...prev, category_id: value }))}
+              >
+                <SelectTrigger id="template-category">
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templateCategories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Example Use Cases (optional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Add example prompts showing how users might use this template
+              </p>
+              <div className="space-y-2">
+                {submitForm.use_cases.map((useCase, index) => (
+                  <Input
+                    key={index}
+                    value={useCase}
+                    onChange={(e) => {
+                      const newUseCases = [...submitForm.use_cases];
+                      newUseCases[index] = e.target.value;
+                      setSubmitForm(prev => ({ ...prev, use_cases: newUseCases }));
+                    }}
+                    placeholder={`Example use case ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3 bg-muted/50 rounded-lg border text-sm">
+              <p className="text-muted-foreground">
+                Your submission will be reviewed by our team. You&apos;ll receive an email when your template is approved.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsSubmitDialogOpen(false)}
+              disabled={isSubmittingTemplate}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitAsTemplate}
+              disabled={isSubmittingTemplate || !submitForm.template_name.trim()}
+            >
+              {isSubmittingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Submit for Review
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

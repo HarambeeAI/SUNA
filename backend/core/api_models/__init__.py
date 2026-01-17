@@ -108,6 +108,16 @@ from .share_links import (
     ShareLinkUpdateRequest,
 )
 
+from .template_submissions import (
+    TemplateSubmissionStatus,
+    TemplateSubmissionCreateRequest,
+    TemplateSubmissionResponse,
+    TemplateSubmissionsListResponse,
+    ApproveSubmissionRequest,
+    RejectSubmissionRequest,
+    TemplateSubmissionStatsResponse,
+)
+
 
 __all__ = [
     # Agent models
@@ -202,4 +212,13 @@ __all__ = [
     "PublicShareLinkResponse",
     "PublicShareLinkErrorResponse",
     "ShareLinkUpdateRequest",
+
+    # Template submission models
+    "TemplateSubmissionStatus",
+    "TemplateSubmissionCreateRequest",
+    "TemplateSubmissionResponse",
+    "TemplateSubmissionsListResponse",
+    "ApproveSubmissionRequest",
+    "RejectSubmissionRequest",
+    "TemplateSubmissionStatsResponse",
 ]

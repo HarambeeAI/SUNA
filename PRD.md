@@ -326,13 +326,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a user who built a great agent, I want to submit it as a template so others can benefit.
 
 **Acceptance Criteria:**
-- [ ] "Submit as Template" button in agent settings
-- [ ] Submission form: template name, description, category, example use cases
-- [ ] Submissions go to moderation queue (admin review required)
-- [ ] GET `/v1/admin/template-submissions` endpoint for admin review
-- [ ] Admin can approve (publish) or reject with reason
-- [ ] Email user on approval: "Your template is now live!"
-- [ ] Typecheck passes
+- [x] "Submit as Template" button in agent settings
+- [x] Submission form: template name, description, category, example use cases
+- [x] Submissions go to moderation queue (admin review required)
+- [x] GET `/v1/admin/template-submissions` endpoint for admin review
+- [x] Admin can approve (publish) or reject with reason
+- [x] Email user on approval: "Your template is now live!"
+- [x] Typecheck passes
 
 ### US-028: Admin panel for platform management
 **Description:** As a platform admin, I want an admin dashboard so I can monitor the platform and moderate content.

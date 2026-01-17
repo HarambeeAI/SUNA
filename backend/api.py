@@ -334,10 +334,13 @@ from core.mcp_module import api as mcp_api
 from core.credentials import api as credentials_api
 from core.templates import api as template_api
 from core.templates import presentations_api
+from core.templates.submissions_api import router as template_submissions_router, admin_router as template_submissions_admin_router
 
 api_router.include_router(mcp_api.router)
 api_router.include_router(credentials_api.router, prefix="/secure-mcp")
 api_router.include_router(template_api.router, prefix="/templates")
+api_router.include_router(template_submissions_router)
+api_router.include_router(template_submissions_admin_router)
 api_router.include_router(presentations_api.router, prefix="/presentation-templates")
 
 api_router.include_router(transcription_api.router)
