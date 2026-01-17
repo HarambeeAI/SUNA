@@ -814,3 +814,291 @@ export const switchOrganization = async (orgId: string | null): Promise<SwitchOr
 
   return response.data;
 };
+
+// ============================================================================
+// Usage Dashboard Types
+// ============================================================================
+
+export interface DashboardStats {
+  org_id: string;
+  org_name: string;
+  plan_tier: PlanTier;
+  billing_status: BillingStatus;
+  plan_display_name: string;
+  total_agents: number;
+  active_agents: number;
+  total_runs_month: number;
+  total_tokens_used: number;
+  estimated_cost_cents: number;
+  period_start: string | null;
+  period_end: string | null;
+  agent_limit: number | null;
+  run_limit_monthly: number | null;
+  agents_percent: number;
+  runs_percent: number;
+}
+
+export interface TimelineDataPoint {
+  date: string;
+  run_count: number;
+  success_count: number;
+  failure_count: number;
+}
+
+export interface RunsTimelineResponse {
+  data: TimelineDataPoint[];
+  days: number;
+}
+
+export interface TopAgentData {
+  agent_id: string;
+  agent_name: string;
+  run_count: number;
+  success_count: number;
+  failure_count: number;
+  success_rate: number | null;
+}
+
+export interface TopAgentsResponse {
+  agents: TopAgentData[];
+  limit: number;
+}
+
+export interface ActiveUserData {
+  user_id: string;
+  role: string;
+  run_count: number;
+  success_count: number;
+  last_active: string | null;
+}
+
+export interface ActiveUsersResponse {
+  users: ActiveUserData[];
+  limit: number;
+}
+
+export interface UsageExportRow {
+  run_id: string;
+  agent_name: string | null;
+  thread_id: string | null;
+  status: string;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  error: string | null;
+  model_name: string | null;
+}
+
+export interface UsageExportResponse {
+  rows: UsageExportRow[];
+  total_count: number;
+  period_start: string;
+  period_end: string;
+}
+
+export interface DashboardResponse {
+  stats: DashboardStats;
+  runs_timeline: RunsTimelineResponse;
+  top_agents: TopAgentsResponse;
+  active_users: ActiveUsersResponse;
+}
+
+// ============================================================================
+// Usage Dashboard API Functions
+// ============================================================================
+
+/**
+ * Get full usage dashboard data for an organization
+ */
+export const getUsageDashboard = async (orgId: string): Promise<DashboardResponse | null> => {
+  try {
+    const response = await backendApi.get<DashboardResponse>(
+      `/v1/organizations/${orgId}/usage/dashboard`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load usage dashboard',
+        resource: `organization ${orgId} dashboard`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load usage dashboard',
+      resource: `organization ${orgId} dashboard`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get dashboard statistics for an organization
+ */
+export const getDashboardStats = async (orgId: string): Promise<DashboardStats | null> => {
+  try {
+    const response = await backendApi.get<DashboardStats>(
+      `/v1/organizations/${orgId}/usage/stats`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load dashboard stats',
+        resource: `organization ${orgId} stats`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load dashboard stats',
+      resource: `organization ${orgId} stats`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get runs timeline for chart
+ */
+export const getRunsTimeline = async (
+  orgId: string,
+  days: number = 30
+): Promise<RunsTimelineResponse | null> => {
+  try {
+    const response = await backendApi.get<RunsTimelineResponse>(
+      `/v1/organizations/${orgId}/usage/timeline?days=${days}`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load runs timeline',
+        resource: `organization ${orgId} timeline`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load runs timeline',
+      resource: `organization ${orgId} timeline`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get top agents by run count
+ */
+export const getTopAgents = async (
+  orgId: string,
+  limit: number = 10
+): Promise<TopAgentsResponse | null> => {
+  try {
+    const response = await backendApi.get<TopAgentsResponse>(
+      `/v1/organizations/${orgId}/usage/agents?limit=${limit}`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load top agents',
+        resource: `organization ${orgId} top agents`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load top agents',
+      resource: `organization ${orgId} top agents`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get most active users
+ */
+export const getActiveUsers = async (
+  orgId: string,
+  limit: number = 10
+): Promise<ActiveUsersResponse | null> => {
+  try {
+    const response = await backendApi.get<ActiveUsersResponse>(
+      `/v1/organizations/${orgId}/usage/users?limit=${limit}`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load active users',
+        resource: `organization ${orgId} active users`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load active users',
+      resource: `organization ${orgId} active users`
+    });
+    return null;
+  }
+};
+
+/**
+ * Get usage export data
+ */
+export const getUsageExport = async (orgId: string): Promise<UsageExportResponse | null> => {
+  try {
+    const response = await backendApi.get<UsageExportResponse>(
+      `/v1/organizations/${orgId}/usage/export`,
+      { showErrors: false }
+    );
+
+    if (response.error) {
+      handleApiError(response.error, {
+        operation: 'load usage export',
+        resource: `organization ${orgId} export`
+      });
+      return null;
+    }
+
+    return response.data || null;
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'load usage export',
+      resource: `organization ${orgId} export`
+    });
+    return null;
+  }
+};
+
+/**
+ * Download usage data as CSV
+ */
+export const downloadUsageCsv = async (orgId: string): Promise<void> => {
+  try {
+    // Create a direct download link for the CSV endpoint
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+    const url = `${baseUrl}/v1/organizations/${orgId}/usage/export/csv`;
+
+    // Open in new tab to trigger download
+    window.open(url, '_blank');
+  } catch (err) {
+    handleApiError(err, {
+      operation: 'download usage CSV',
+      resource: `organization ${orgId} CSV export`
+    });
+  }
+};

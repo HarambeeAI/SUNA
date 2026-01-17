@@ -241,13 +241,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization owner, I want to see usage analytics so I can make informed decisions about our plan.
 
 **Acceptance Criteria:**
-- [ ] Dashboard shows: total agents, active agents (used in last 30 days), total runs this month
-- [ ] Line chart: agent runs over time (last 30 days)
-- [ ] Bar chart: runs by agent (top 10 most active)
-- [ ] Table: most active users by run count
-- [ ] Usage percentage indicators with warnings at 80% and 100%
-- [ ] Export usage data as CSV button
-- [ ] Typecheck passes
+- [x] Dashboard shows: total agents, active agents (used in last 30 days), total runs this month
+- [x] Line chart: agent runs over time (last 30 days)
+- [x] Bar chart: runs by agent (top 10 most active)
+- [x] Table: most active users by run count
+- [x] Usage percentage indicators with warnings at 80% and 100%
+- [x] Export usage data as CSV button
+- [x] Typecheck passes
 - [ ] Verify changes work in browser
 
 ### US-021: Onboarding flow for new organizations

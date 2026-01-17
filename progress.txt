@@ -779,3 +779,64 @@
   - Public visibility is disabled in UI (future marketplace feature)
   - Browser verification still pending - requires manual testing
 ---
+
+## Iteration 20 - US-020: Organization usage dashboard
+- What was implemented:
+  - Backend: Created usage dashboard repository functions (usage_dashboard_repo.py):
+    - get_org_dashboard_stats: total agents, active agents, runs this month, usage percentages
+    - get_org_runs_timeline: daily run counts for last N days with success/failure breakdown
+    - get_org_top_agents: top N most active agents by run count
+    - get_org_active_users: most active users by run count
+    - get_org_usage_export: detailed usage data for CSV export
+    - get_org_usage_history: historical monthly usage records
+  - Backend: Created API models (usage_dashboard.py):
+    - DashboardStats, TimelineDataPoint, RunsTimelineResponse
+    - TopAgentData, TopAgentsResponse
+    - ActiveUserData, ActiveUsersResponse
+    - UsageExportRow, UsageExportResponse
+    - DashboardResponse (combined full dashboard)
+  - Backend: Created API endpoints (usage_dashboard_api.py):
+    - GET /organizations/{org_id}/usage/dashboard - full dashboard data
+    - GET /organizations/{org_id}/usage/stats - dashboard stats only
+    - GET /organizations/{org_id}/usage/timeline - runs timeline chart data
+    - GET /organizations/{org_id}/usage/agents - top agents chart data
+    - GET /organizations/{org_id}/usage/users - active users table data
+    - GET /organizations/{org_id}/usage/export - usage export data as JSON
+    - GET /organizations/{org_id}/usage/export/csv - download CSV file
+  - Frontend: Added API types and functions (organizations.ts):
+    - DashboardStats, TimelineDataPoint, RunsTimelineResponse types
+    - TopAgentData, TopAgentsResponse, ActiveUserData, ActiveUsersResponse types
+    - UsageExportRow, UsageExportResponse, DashboardResponse types
+    - getUsageDashboard, getDashboardStats, getRunsTimeline functions
+    - getTopAgents, getActiveUsers, getUsageExport, downloadUsageCsv functions
+  - Frontend: Created usage dashboard page (settings/usage/page.tsx):
+    - Stats cards: Total Agents, Active Agents, Runs This Month, Active Users
+    - Line chart: agent runs over time with success/failure lines (recharts)
+    - Bar chart: top 10 most active agents by run count (recharts)
+    - Table: most active users by run count
+    - Usage percentage indicators with color-coded warnings (green/yellow/red)
+    - Alert banners at 80% (warning) and 100% (error) usage
+    - Export CSV button with download functionality
+    - Auto-refresh every 60 seconds
+- Files changed:
+  - backend/core/organizations/usage_dashboard_repo.py (new)
+  - backend/core/organizations/usage_dashboard_api.py (new)
+  - backend/core/api_models/usage_dashboard.py (new)
+  - backend/core/api_models/__init__.py (modified - exports usage dashboard models)
+  - backend/core/organizations/__init__.py (modified - imports usage_dashboard_repo)
+  - backend/api.py (modified - includes usage_dashboard_router)
+  - apps/frontend/src/lib/api/organizations.ts (modified - added usage dashboard types and functions)
+  - apps/frontend/src/app/(dashboard)/settings/usage/layout.tsx (new)
+  - apps/frontend/src/app/(dashboard)/settings/usage/page.tsx (new)
+  - PRD.md (marked US-020 ACs as complete)
+- Learnings for future iterations:
+  - Usage dashboard lives at /settings/usage?org=<org-id>
+  - Dashboard requires viewer role or higher (enforced via require_org_viewer)
+  - CSV export requires admin role or higher (enforced via require_org_admin)
+  - Use recharts for charts (already in dependencies): LineChart, BarChart, ResponsiveContainer
+  - Stats queries use CTEs for efficient aggregation of agent counts and usage
+  - Active agents defined as agents with runs in last 30 days
+  - Timeline includes success/failure breakdown for detailed analytics
+  - Color thresholds: green <80%, yellow 80-99%, red 100%+
+  - Browser verification still pending - requires manual testing
+---
