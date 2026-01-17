@@ -3,6 +3,7 @@
 This module handles Stripe webhook events for organization subscriptions.
 """
 
+import asyncio
 from typing import Dict, Any, Optional
 
 from core.utils.logger import logger
@@ -75,6 +76,18 @@ class OrgBillingWebhookHandler:
                 f"previous_tier={metadata.get('previous_plan_tier', 'unknown')}"
             )
 
+            # Send subscription created email notification (US-023)
+            try:
+                from core.notifications.org_billing_notifications import org_billing_notifications
+                asyncio.create_task(
+                    org_billing_notifications.send_subscription_created(
+                        org_id=org_id,
+                        plan_name=target_plan_tier.title()
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[ORG WEBHOOK] Failed to send subscription created notification: {e}")
+
             return True
 
         except Exception as e:
@@ -132,6 +145,60 @@ class OrgBillingWebhookHandler:
             raise
 
     @staticmethod
+    async def handle_invoice_payment_succeeded(event: Dict[str, Any]) -> bool:
+        """
+        Handle invoice.payment_succeeded event for organization subscriptions.
+
+        Sends payment success notification to organization owners.
+        Returns True if this was an organization invoice, False otherwise.
+        """
+        invoice = event.data.object
+        subscription_id = invoice.get('subscription')
+
+        if not subscription_id:
+            return False
+
+        # Try to find the organization by subscription
+        org = await _find_org_by_subscription_id(subscription_id)
+        if not org:
+            return False
+
+        org_id = org['id']
+        logger.info(f"[ORG WEBHOOK] Processing invoice.payment_succeeded for org {org_id}")
+
+        try:
+            # Get invoice details
+            amount_cents = invoice.get('amount_paid', 0)
+            currency = invoice.get('currency', 'usd').upper()
+            invoice_url = invoice.get('hosted_invoice_url')
+
+            # Send payment success email notification (US-023)
+            try:
+                from core.notifications.org_billing_notifications import org_billing_notifications
+                asyncio.create_task(
+                    org_billing_notifications.send_payment_success(
+                        org_id=org_id,
+                        amount_cents=amount_cents,
+                        currency=currency,
+                        invoice_url=invoice_url
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[ORG WEBHOOK] Failed to send payment success notification: {e}")
+
+            # Log for analytics
+            logger.info(
+                f"[ORG BILLING ANALYTICS] org_payment_succeeded "
+                f"org_id={org_id} amount_cents={amount_cents} plan_tier={org.get('plan_tier', 'unknown')}"
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"[ORG WEBHOOK] Error handling payment succeeded for org {org_id}: {e}")
+            raise
+
+    @staticmethod
     async def handle_invoice_payment_failed(event: Dict[str, Any]) -> bool:
         """
         Handle invoice.payment_failed event for organization subscriptions.
@@ -167,6 +234,24 @@ class OrgBillingWebhookHandler:
                 f"[ORG BILLING ANALYTICS] org_payment_failed "
                 f"org_id={org_id} plan_tier={org.get('plan_tier', 'unknown')}"
             )
+
+            # Send payment failed email notification (US-023)
+            try:
+                from core.notifications.org_billing_notifications import org_billing_notifications
+                # Get amount from invoice
+                amount_cents = invoice.get('amount_due', 0)
+                currency = invoice.get('currency', 'usd').upper()
+
+                asyncio.create_task(
+                    org_billing_notifications.send_payment_failed(
+                        org_id=org_id,
+                        amount_cents=amount_cents,
+                        currency=currency,
+                        failure_reason="Your payment method was declined. Please update your payment information."
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[ORG WEBHOOK] Failed to send payment failed notification: {e}")
 
             return True
 

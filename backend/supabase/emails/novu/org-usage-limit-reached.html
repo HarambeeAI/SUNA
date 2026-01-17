@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You've Reached Your Plan Limit</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #fafafa; color: #1a1a1a;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; margin: 0 auto; padding: 40px 20px;">
+    <tr>
+      <td>
+        <!-- Logo -->
+        <div style="text-align: center; margin-bottom: 40px;">
+          <img src="https://kortix.com/Logomark.svg" alt="Worryless AI" style="height: 24px; width: auto; display: inline-block;" />
+        </div>
+
+        <!-- Content -->
+        <div style="background-color: #ffffff; border-radius: 16px; padding: 40px 32px;">
+          <table cellpadding="0" cellspacing="0" border="0" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1a1a1a;">
+            <tr>
+              <td>
+                <div style="text-align: center; margin-bottom: 24px;">
+                  <div style="display: inline-block; width: 48px; height: 48px; background: #fee2e2; border-radius: 50%; line-height: 48px; font-size: 24px; color: #dc2626;">
+                    &#10006;
+                  </div>
+                </div>
+
+                <h1 style="margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #1a1a1a; text-align: center;">
+                  You've Reached Your Plan Limit
+                </h1>
+
+                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #4a4a4a;">
+                  Hi {{first_name}},
+                </p>
+
+                <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #4a4a4a;">
+                  <strong>{{org_name}}</strong> has reached its {{limit_type}} limit of <strong>{{limit}}</strong> on the {{plan_name}} plan.
+                </p>
+
+                <!-- Limit Reached Indicator -->
+                <div style="margin: 0 0 24px 0;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px;">
+                    <span style="color: #6b7280;">{{limit_type | capitalize}} usage</span>
+                    <span style="color: #dc2626; font-weight: 600;">{{limit}} / {{limit}} (100%)</span>
+                  </div>
+                  <div style="background: #e5e7eb; border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="background: #dc2626; height: 100%; width: 100%; border-radius: 4px;"></div>
+                  </div>
+                </div>
+
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 20px; margin: 0 0 24px 0;">
+                  <p style="margin: 0; font-size: 14px; color: #991b1b;">
+                    <strong>What this means:</strong> Your team cannot {{action_blocked}} until you upgrade to a higher plan or wait for the next billing cycle.
+                  </p>
+                </div>
+
+                <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #4a4a4a;">
+                  Upgrade to Pro to unlock unlimited agents and 5,000 monthly runs, so your team can keep building without interruption.
+                </p>
+
+                <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 24px auto;">
+                  <tr>
+                    <td>
+                      <a href="{{upgrade_url}}" style="display: inline-block; background: #000000; color: #ffffff; padding: 14px 28px; text-decoration: none; font-size: 15px; font-weight: 500; border-radius: 8px;">
+                        Upgrade Now
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <table cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto 24px auto;">
+                  <tr>
+                    <td>
+                      <a href="{{usage_url}}" style="font-size: 14px; color: #6b7280; text-decoration: underline;">
+                        View detailed usage
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6b7280; text-align: center;">
+                  Questions? Reply to this email and we'll help you out.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 32px;">
+          <p style="font-size: 12px; color: #999; margin: 0;">
+            &copy; Worryless AI. All rights reserved.
+          </p>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

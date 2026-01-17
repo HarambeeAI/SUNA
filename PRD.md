@@ -278,13 +278,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As an organization owner, I want email notifications for billing events so I stay informed about my subscription.
 
 **Acceptance Criteria:**
-- [ ] Email on subscription created: "Welcome to Worryless AI Pro!"
-- [ ] Email on payment success: "Your payment was processed successfully"
-- [ ] Email on payment failure: "Action required: Update your payment method"
-- [ ] Email on approaching usage limit (80%): "You're approaching your plan limit"
-- [ ] Email on hitting usage limit: "You've reached your plan limit - Upgrade to continue"
-- [ ] All emails use branded template with clear CTAs
-- [ ] Typecheck passes
+- [x] Email on subscription created: "Welcome to Worryless AI Pro!"
+- [x] Email on payment success: "Your payment was processed successfully"
+- [x] Email on payment failure: "Action required: Update your payment method"
+- [x] Email on approaching usage limit (80%): "You're approaching your plan limit"
+- [x] Email on hitting usage limit: "You've reached your plan limit - Upgrade to continue"
+- [x] All emails use branded template with clear CTAs
+- [x] Typecheck passes
 
 ### US-024: Agent run cost calculation
 **Description:** As a platform engineer, I need to calculate and track agent run costs so we can analyze unit economics.

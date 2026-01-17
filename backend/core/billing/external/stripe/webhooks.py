@@ -82,7 +82,12 @@ class WebhookService:
                     await SubscriptionHandler.handle_subscription_deleted(event, client)
 
             elif event.type in ['invoice.payment_succeeded', 'invoice.paid', 'invoice_payment.paid']:
-                await InvoiceHandler.handle_invoice_payment_succeeded(event, client)
+                # Try organization handler first, fall back to account handler
+                # Import here to avoid circular dependency
+                from core.organizations.billing_webhooks import OrgBillingWebhookHandler
+                org_handled = await OrgBillingWebhookHandler.handle_invoice_payment_succeeded(event)
+                if not org_handled:
+                    await InvoiceHandler.handle_invoice_payment_succeeded(event, client)
 
             elif event.type == 'invoice.payment_failed':
                 # Try organization handler first, fall back to account handler

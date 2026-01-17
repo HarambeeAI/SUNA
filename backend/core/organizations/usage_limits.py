@@ -3,8 +3,11 @@
 Part of US-007: Usage limit enforcement.
 Checks organization plan limits for agent creation and agent runs,
 returning 402 Payment Required with upgrade CTA when limits are exceeded.
+
+Extended for US-023: Adds email notifications for approaching and hitting limits.
 """
 
+import asyncio
 from typing import Dict, Any, Optional
 from uuid import UUID
 
@@ -15,6 +18,9 @@ from core.utils.logger import logger
 # Error codes for limit violations
 ERROR_CODE_AGENT_LIMIT = "ORG_AGENT_LIMIT_EXCEEDED"
 ERROR_CODE_RUN_LIMIT = "ORG_RUN_LIMIT_MONTHLY_EXCEEDED"
+
+# Threshold for "approaching limit" notification (percentage)
+APPROACHING_LIMIT_THRESHOLD = 80
 
 
 async def get_org_plan_and_usage(org_id: str) -> Optional[Dict[str, Any]]:
@@ -241,6 +247,8 @@ async def increment_org_agent_usage(org_id: str) -> int:
     """
     Increment agent creation count for an organization.
 
+    Also checks and sends notification if approaching the limit (80%).
+
     Args:
         org_id: Organization ID
 
@@ -249,7 +257,23 @@ async def increment_org_agent_usage(org_id: str) -> int:
     """
     sql = "SELECT public.increment_org_agent_count(:org_id) as new_count"
     result = await execute_one(sql, {"org_id": org_id}, commit=True)
-    return result['new_count'] if result else 0
+    new_count = result['new_count'] if result else 0
+
+    # Check if approaching limit and send notification (US-023)
+    # For agents, we use actual agent count, not the usage tracking count
+    if new_count > 0:
+        plan_info = await get_org_plan_and_usage(org_id)
+        if plan_info and plan_info.get('agent_limit'):
+            actual_count = await count_org_agents(org_id)
+            await check_and_notify_approaching_limit(
+                org_id=org_id,
+                limit_type="agents",
+                current_count=actual_count,
+                limit=plan_info['agent_limit'],
+                plan_tier=plan_info.get('plan_tier', 'free')
+            )
+
+    return new_count
 
 
 async def increment_org_run_usage(
@@ -259,6 +283,8 @@ async def increment_org_run_usage(
 ) -> int:
     """
     Increment run count for an organization.
+
+    Also checks and sends notification if approaching the limit (80%).
 
     Args:
         org_id: Organization ID
@@ -276,7 +302,21 @@ async def increment_org_run_usage(
         "tokens_used": tokens_used,
         "cost_cents": cost_cents
     }, commit=True)
-    return result['new_count'] if result else 0
+    new_count = result['new_count'] if result else 0
+
+    # Check if approaching limit and send notification (US-023)
+    if new_count > 0:
+        plan_info = await get_org_plan_and_usage(org_id)
+        if plan_info and plan_info.get('run_limit_monthly'):
+            await check_and_notify_approaching_limit(
+                org_id=org_id,
+                limit_type="runs",
+                current_count=new_count,
+                limit=plan_info['run_limit_monthly'],
+                plan_tier=plan_info.get('plan_tier', 'free')
+            )
+
+    return new_count
 
 
 def _build_limit_error(
@@ -341,10 +381,93 @@ async def _log_limit_hit(
         }
     )
 
-    # TODO: Send to analytics service for conversion tracking
-    # await analytics.track("org_limit_hit", {
-    #     "org_id": str(org_id),
-    #     "limit_type": limit_type,
-    #     "plan_tier": plan_tier,
-    #     "usage_percent": (current_count / limit) * 100
-    # })
+    # Send limit reached email notification (US-023)
+    try:
+        from core.notifications.org_billing_notifications import org_billing_notifications
+        asyncio.create_task(
+            org_billing_notifications.send_usage_limit_reached(
+                org_id=org_id,
+                limit_type="agents" if limit_type == "agent_creation" else "runs",
+                limit=limit
+            )
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send usage limit reached notification for org {org_id}: {e}")
+
+
+async def check_and_notify_approaching_limit(
+    org_id: str,
+    limit_type: str,
+    current_count: int,
+    limit: int,
+    plan_tier: str
+) -> None:
+    """
+    Check if organization is approaching a limit and send notification if so.
+
+    Sends notification when usage crosses the 80% threshold.
+    Uses a tracking mechanism to avoid sending duplicate notifications.
+
+    Args:
+        org_id: Organization ID
+        limit_type: Type of limit ("agents" or "runs")
+        current_count: Current usage count
+        limit: Maximum allowed by plan
+        plan_tier: Organization's current plan tier
+    """
+    if limit is None or limit == 0:
+        return  # Unlimited, no notification needed
+
+    percentage = round((current_count / limit) * 100)
+
+    # Check if we've crossed the 80% threshold
+    if percentage >= APPROACHING_LIMIT_THRESHOLD and percentage < 100:
+        # Check if notification was already sent this period
+        notification_sent = await _check_approaching_notification_sent(org_id, limit_type)
+
+        if not notification_sent:
+            logger.info(
+                f"Org approaching limit: org_id={org_id} type={limit_type} "
+                f"usage={current_count}/{limit} ({percentage}%)"
+            )
+
+            # Mark notification as sent before sending to avoid race conditions
+            await _mark_approaching_notification_sent(org_id, limit_type)
+
+            # Send approaching limit email notification (US-023)
+            try:
+                from core.notifications.org_billing_notifications import org_billing_notifications
+                asyncio.create_task(
+                    org_billing_notifications.send_usage_limit_approaching(
+                        org_id=org_id,
+                        limit_type=limit_type,
+                        current_usage=current_count,
+                        limit=limit,
+                        percentage=percentage
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send approaching limit notification for org {org_id}: {e}")
+
+
+async def _check_approaching_notification_sent(org_id: str, limit_type: str) -> bool:
+    """Check if approaching notification was already sent this billing period."""
+    try:
+        from core.utils.cache import Cache
+        cache_key = f"org_approaching_notification:{org_id}:{limit_type}"
+        result = await Cache.get(cache_key)
+        return result is not None
+    except Exception as e:
+        logger.warning(f"Error checking approaching notification cache: {e}")
+        return False  # Fail open - send notification if we can't check
+
+
+async def _mark_approaching_notification_sent(org_id: str, limit_type: str) -> None:
+    """Mark approaching notification as sent for this billing period."""
+    try:
+        from core.utils.cache import Cache
+        cache_key = f"org_approaching_notification:{org_id}:{limit_type}"
+        # TTL of 32 days to cover a full billing period with some buffer
+        await Cache.set(cache_key, True, ttl=32 * 24 * 60 * 60)
+    except Exception as e:
+        logger.warning(f"Error setting approaching notification cache: {e}")
