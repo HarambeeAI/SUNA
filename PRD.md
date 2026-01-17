@@ -139,7 +139,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] "Create Organization" option at bottom of dropdown
 - [x] Show organization logo/avatar if available
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-012: Agent template schema and storage
 **Description:** As a platform engineer, I need to store agent templates so users can quickly deploy pre-configured agents.
