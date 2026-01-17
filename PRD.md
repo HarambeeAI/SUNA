@@ -178,13 +178,13 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 **Description:** As a product manager, I need high-quality starter templates so users see immediate value.
 
 **Acceptance Criteria:**
-- [ ] Customer Service Agent: handles support tickets, FAQ lookup, ticket routing
-- [ ] Sales Research Agent: company research, lead enrichment, prospect outreach
-- [ ] Content Writer Agent: blog posts, social media, SEO optimization
-- [ ] Data Analyst Agent: CSV analysis, visualization, report generation
-- [ ] Meeting Assistant Agent: schedule meetings, send reminders, take notes
-- [ ] Each template has detailed description, example use cases, recommended settings
-- [ ] Typecheck passes
+- [x] Customer Service Agent: handles support tickets, FAQ lookup, ticket routing
+- [x] Sales Research Agent: company research, lead enrichment, prospect outreach
+- [x] Content Writer Agent: blog posts, social media, SEO optimization
+- [x] Data Analyst Agent: CSV analysis, visualization, report generation
+- [x] Meeting Assistant Agent: schedule meetings, send reminders, take notes
+- [x] Each template has detailed description, example use cases, recommended settings
+- [x] Typecheck passes
 
 ### US-016: Template marketplace UI
 **Description:** As a user, I want to browse agent templates so I can discover and deploy useful agents.
