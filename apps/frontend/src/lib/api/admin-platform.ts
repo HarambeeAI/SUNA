@@ -109,7 +109,10 @@ function buildQueryString(params: Record<string, string | number | boolean | und
 
 export async function getPlatformOverview(): Promise<PlatformOverviewStats> {
   const response = await backendApi.get<PlatformOverviewStats>('/admin/platform/overview');
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch platform overview');
+  }
+  return response.data;
 }
 
 // Organizations Admin API
@@ -126,7 +129,10 @@ export async function listOrganizationsAdmin(params?: {
   const response = await backendApi.get<OrganizationsListResponse>(
     `/admin/platform/organizations${queryString}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to list organizations');
+  }
+  return response.data;
 }
 
 export async function updateOrganizationPlanTier(
@@ -137,7 +143,10 @@ export async function updateOrganizationPlanTier(
     `/admin/platform/organizations/${orgId}/plan-tier`,
     request
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to update organization plan tier');
+  }
+  return response.data;
 }
 
 // Users Admin API
@@ -154,7 +163,10 @@ export async function listUsersAdmin(params?: {
   const response = await backendApi.get<UsersListResponse>(
     `/admin/platform/users${queryString}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to list users');
+  }
+  return response.data;
 }
 
 export async function suspendUser(
@@ -165,7 +177,10 @@ export async function suspendUser(
     `/admin/platform/users/${userId}/suspend`,
     request
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to suspend user');
+  }
+  return response.data;
 }
 
 export async function unsuspendUser(
@@ -175,12 +190,18 @@ export async function unsuspendUser(
     `/admin/platform/users/${userId}/unsuspend`,
     {}
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to unsuspend user');
+  }
+  return response.data;
 }
 
 // System Health API
 
 export async function getSystemHealth(): Promise<SystemHealthMetrics> {
   const response = await backendApi.get<SystemHealthMetrics>('/admin/platform/health');
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch system health');
+  }
+  return response.data;
 }
