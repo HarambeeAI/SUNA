@@ -357,7 +357,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Table: slowest tool executions (identify bottlenecks)
 - [x] Export agent run logs as JSON for debugging
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-030: API key management for programmatic access
 **Description:** As a developer, I want to generate API keys so I can integrate Worryless AI into my applications.
