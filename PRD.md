@@ -320,7 +320,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Track public usage separately: runs don't count toward org limits
 - [x] Ability to revoke public access (delete token)
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-027: Template submission by users
 **Description:** As a user who built a great agent, I want to submit it as a template so others can benefit.
