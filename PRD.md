@@ -261,7 +261,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] Step 4: Show tips: invite team, explore templates, upgrade plan
 - [x] Onboarding dismissible and resumable via "Help" menu
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-022: Billing portal integration
 **Description:** As a paid customer, I want to manage my subscription so I can update payment methods and view invoices.
