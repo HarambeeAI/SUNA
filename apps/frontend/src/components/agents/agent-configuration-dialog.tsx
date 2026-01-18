@@ -208,7 +208,7 @@ export function AgentConfigurationDialog({
       try {
         // Load categories
         const categoriesResponse = await getTemplateCategories();
-        setTemplateCategories(categoriesResponse.categories || []);
+        setTemplateCategories(categoriesResponse || []);
 
         // Check for existing pending submission for this agent
         const submissionsResponse = await listMySubmissions({ status: 'pending' });
