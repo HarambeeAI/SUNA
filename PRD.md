@@ -370,7 +370,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] List existing keys with: name, prefix, created date, last used, revoke button
 - [x] Keys authenticate via `Authorization: Bearer <key>` header
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ## Non-Goals
 
