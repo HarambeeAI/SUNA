@@ -1455,3 +1455,229 @@
   - createAgentFromTemplate is dynamically imported when creating
   - handlePreviewInstall converts MarketplaceTemplate back to AgentTemplate format
 ---
+
+## Iteration 36 - US-018: Browser verification (shared agents within organization)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (repo.py, agent_crud.py)
+  - My agents tab component exists at components/agents/custom-agents-page/my-agents-tab.tsx
+  - Agents grid component exists at components/agents/agents-grid.tsx
+  - All UI components verified: Select, AgentsGrid, SearchBar, EmptyState, LoadingState, Pagination
+  - All hooks verified: useActiveOrg, useAuth
+  - Page implements all acceptance criteria:
+    - Agents list shows "My Workers" and "Team Workers" sections when in org context (lines 287-324)
+    - Team agents split by comparing agent.account_id === user.id (lines 124-141)
+    - Agent cards show creator name via showCreatorInfo prop (lines 309-312)
+    - Filter dropdown with All/My/Team/Templates options (lines 62-75, 257-268)
+    - Backend enforces deletion permissions: admins delete any, members only own (agent_crud.py lines 440-459)
+- Files verified:
+  - apps/frontend/src/components/agents/custom-agents-page/my-agents-tab.tsx
+  - apps/frontend/src/components/agents/agents-grid.tsx
+  - apps/frontend/src/hooks/agents/utils.ts
+  - backend/core/agents/repo.py
+  - backend/core/agents/agent_crud.py
+- Learnings for future iterations:
+  - useActiveOrg hook provides activeOrgId for org context detection
+  - Agents split client-side based on account_id comparison with user.id
+  - showCreatorInfo prop on AgentsGrid enables creator badge display
+  - Backend org agent queries use include_team_agents param for filtering
+---
+
+## Iteration 37 - US-019: Browser verification (agent sharing permissions)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (repo.py)
+  - Agent configuration dialog exists at components/agents/agent-configuration-dialog.tsx
+  - Database migration exists: 20260117220000_agent_visibility.sql
+  - All UI components verified: Select, Label, Button, Lock/Building2/Globe/Users icons
+  - Types verified: AgentVisibility type in hooks/agents/utils.ts
+  - Page implements all acceptance criteria:
+    - visibility field with private/org/public enum (migration lines 8-14)
+    - Private RLS policy via basejump.has_role_on_account (migration line 52)
+    - Org RLS policy via has_org_permission (migration lines 54-58)
+    - Public option shows "(Coming Soon)" disabled (dialog line 1071)
+    - Settings tab has Visibility dropdown with Private/Organization/Public options (lines 1042-1081)
+    - Description box updates based on selected visibility (lines 1083-1118)
+    - Default visibility: org for org agents, private for personal (repo.py lines 336-340)
+    - Personal workspace shows info message instead of dropdown (lines 1121-1131)
+- Files verified:
+  - apps/frontend/src/components/agents/agent-configuration-dialog.tsx
+  - apps/frontend/src/hooks/agents/utils.ts
+  - backend/core/agents/repo.py
+  - backend/supabase/migrations/20260117220000_agent_visibility.sql
+- Learnings for future iterations:
+  - Agent visibility is org-context aware with different defaults
+  - Personal workspace agents can only be private (no dropdown)
+  - RLS policies enforce visibility at database level
+  - canEditVisibility checks isOrgAgent && !isSunaAgent && !isViewingOldVersion
+---
+
+## Iteration 38 - US-020: Browser verification (organization usage dashboard)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (usage_dashboard_repo.py, usage_dashboard_api.py)
+  - Usage dashboard page exists at /settings/usage
+  - All UI components verified: Card, Badge, Button, Progress, Alert, Table, LineChart, BarChart (recharts)
+  - API functions verified: getUsageDashboard, downloadUsageCsv
+  - Page implements all acceptance criteria:
+    - Stats cards: Total Agents, Active Agents, Runs This Month (lines 215-276)
+    - Line chart: runs timeline with Total/Success/Failed lines (lines 296-352)
+    - Bar chart: top 10 most active agents (lines 354-402)
+    - Table: active users with User ID, Role, Runs, Success, Last Active (lines 404-457)
+    - Usage percentage indicators with color-coding (lines 50-60)
+    - Warning alerts at 80% and 100% usage (lines 62-70, 192-210)
+    - Export CSV button (lines 85-93, 185-188)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/settings/usage/page.tsx
+  - apps/frontend/src/app/(dashboard)/settings/usage/layout.tsx
+  - apps/frontend/src/lib/api/organizations.ts
+  - backend/core/organizations/usage_dashboard_repo.py
+  - backend/core/organizations/usage_dashboard_api.py
+- Learnings for future iterations:
+  - Usage dashboard lives at /settings/usage?org=<org-id>
+  - Uses recharts for charts: LineChart, BarChart, ResponsiveContainer
+  - Color thresholds via getUsageColor/getProgressColor helpers
+  - Auto-refresh every 60 seconds via refetchInterval
+  - CSV export downloads via blob URL using downloadUsageCsv API
+---
+
+## Iteration 39 - US-021: Browser verification (onboarding flow for new organizations)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Onboarding components exist at components/onboarding/
+  - All step components verified: WelcomeStep, WorkspaceChoiceStep, TemplateChoiceStep, FirstMessageStep, TipsCompletionStep
+  - Onboarding config at worryless-onboarding-config.tsx defines 5-step flow
+  - All UI components verified: Button, Input, Card, Badge, ScrollArea, motion (framer-motion)
+  - Page implements all acceptance criteria:
+    - Welcome step shows "Welcome to Worryless AI!" (welcome-step.tsx lines 41-47)
+    - Workspace choice: personal or organization with org creation (workspace-choice-step.tsx)
+    - Template choice: featured templates or blank agent (template-choice-step.tsx)
+    - First message: interactive tutorial with example prompts (first-message-step.tsx)
+    - Tips completion: Invite Team, Explore Templates, Upgrade Plan tips (tips-completion-step.tsx lines 26-48)
+    - Help sidebar has "Resume Onboarding" option (help-sidebar.tsx lines 37-38, 81-85)
+- Files verified:
+  - apps/frontend/src/components/onboarding/worryless-onboarding-config.tsx
+  - apps/frontend/src/components/onboarding/worryless-onboarding-provider.tsx
+  - apps/frontend/src/components/onboarding/steps/welcome-step.tsx
+  - apps/frontend/src/components/onboarding/steps/workspace-choice-step.tsx
+  - apps/frontend/src/components/onboarding/steps/template-choice-step.tsx
+  - apps/frontend/src/components/onboarding/steps/first-message-step.tsx
+  - apps/frontend/src/components/onboarding/steps/tips-completion-step.tsx
+  - apps/frontend/src/components/help/help-sidebar.tsx
+- Learnings for future iterations:
+  - Onboarding uses worrylessOnboardingSteps array with 5 steps
+  - Each step has canSkip, actionLabel, and validation logic
+  - userContext and updateUserContext track onboarding state
+  - Resume onboarding resets context and calls startOnboarding with steps
+  - Uses framer-motion for animations
+---
+
+## Iteration 40 - US-026: Browser verification (public agent sharing links)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (share_links_repo.py, share_links_api.py)
+  - Public share page exists at /share/agent/[shareId]/page.tsx
+  - Agent configuration dialog has share links section
+  - All UI components verified: Card, Button, Alert, Loader2, Textarea, DynamicIcon
+  - API functions verified: listShareLinks, createShareLink, deleteShareLink, revokeShareLink, getShareLinkUrl, getPublicShareLink
+  - Page implements all acceptance criteria:
+    - Settings tab has "Public Share Links" section with Create button (dialog lines 1135-1162)
+    - handleCreateShareLink creates new link via API (lines 481-497)
+    - Public URL format /share/agent/:token (share page exists)
+    - Public page shows agent name, description, view count, chat preview (share page lines 111-200+)
+    - views_count tracks public views (line 141)
+    - handleRevokeShareLink and handleDeleteShareLink for revocation (lines 511-538)
+- Files verified:
+  - apps/frontend/src/app/share/agent/[shareId]/page.tsx
+  - apps/frontend/src/components/agents/agent-configuration-dialog.tsx
+  - apps/frontend/src/lib/api/share-links.ts
+  - backend/core/agents/share_links_repo.py
+  - backend/core/agents/share_links_api.py
+- Learnings for future iterations:
+  - Share links have unique share_id as token
+  - Public share page accessible without authentication
+  - Share links track views_count and runs_count separately
+  - Settings JSONB supports custom_greeting, rate_limit_per_hour
+  - Revoke is soft delete (is_active=false), delete is hard delete
+---
+
+## Iteration 41 - US-028: Browser verification (admin panel for platform management)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (platform_admin_api.py)
+  - Admin page exists at /admin
+  - All UI components verified: Card, Badge, Button, Input, Tabs, Table, Dialog, Select, AlertDialog
+  - API functions verified: getPlatformOverview, listOrganizationsAdmin, updateOrganizationPlanTier, listUsersAdmin, suspendUser, unsuspendUser, getSystemHealth, listAllSubmissions, approveSubmission, rejectSubmission
+  - Page implements all acceptance criteria:
+    - 5 tabs: Overview, Submissions, Organizations, Users, System Health (lines 140-180)
+    - Overview tab: stats cards for users, organizations, agents (lines 220-300+)
+    - Submissions tab: TemplateSubmissionsTab with approve/reject (line 166)
+    - Organizations tab: search, plan filter, change plan dialog (lines 551-590)
+    - Users tab: search, suspension filter, suspend/unsuspend dialogs (lines 752-798)
+    - System Health tab: API, Database, Redis health status (lines 992-1055+)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/admin/page.tsx
+  - apps/frontend/src/lib/api/admin-platform.ts
+  - apps/frontend/src/lib/api/template-submissions.ts
+  - backend/core/admin/platform_admin_api.py
+- Learnings for future iterations:
+  - Admin page uses 5 separate tab components for different management areas
+  - Uses React Query with refetchInterval for auto-refresh
+  - Plan tier changes via updateOrganizationPlanTier mutation
+  - User suspension via suspendUser/unsuspendUser mutations
+  - System health displays API, Database, Redis status with CheckCircle/XCircle icons
+---
+
+## Iteration 42 - US-029: Browser verification (agent performance monitoring)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (agent_analytics_repo.py, agent_analytics_api.py)
+  - Analytics screen exists at /agents/config/[agentId]/screens/analytics-screen.tsx
+  - All UI components verified: Card, Button, Select, Table, Badge, Skeleton, Alert, LineChart, BarChart (recharts)
+  - API functions verified: getAgentAnalyticsDashboard, downloadAgentRunLogs
+  - Page implements all acceptance criteria:
+    - Stats cards: Total Runs, Success Rate, Avg Duration, Total Cost (lines 139-180)
+    - Success rate shows percentage with color indicators (lines 148-166)
+    - LineChart for runs over time with Success/Failed/Stopped breakdown (lines 182-248)
+    - Slowest tools table with BarChart and Table showing name, executions, avg/max duration, errors (lines 250-327)
+    - Export JSON button using downloadAgentRunLogs (lines 46-57, 132-135)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/agents/config/[agentId]/screens/analytics-screen.tsx
+  - apps/frontend/src/lib/api/agent-analytics.ts
+  - backend/core/agents/agent_analytics_repo.py
+  - backend/core/agents/agent_analytics_api.py
+- Learnings for future iterations:
+  - Agent analytics lives in per-agent config page
+  - Uses recharts for LineChart and BarChart visualizations
+  - Period selector: 7, 30, or 90 days
+  - Downloads JSON file via blob URL for debugging
+  - Success rate color: green >=90%, yellow >=70%, red <70%
+---
+
+## Iteration 43 - US-030: Browser verification (API key management for programmatic access)
+- What was verified:
+  - Frontend lint passes without errors (only pre-existing warnings)
+  - Backend Python compiles without errors (org_api_keys_repo.py, org_api_keys_api.py)
+  - API keys page exists at /settings/api-keys
+  - All UI components verified: Card, Badge, Button, Dialog, Input, Label, Textarea, Select, AlertDialog
+  - API functions verified: apiKeysApi.list(), apiKeysApi.create(), apiKeysApi.revoke(), apiKeysApi.delete()
+  - Page implements all acceptance criteria:
+    - API Keys section with "New API Key" button (lines 254-361)
+    - Create dialog with title, description, expires fields (lines 263-360)
+    - Full key shown only on creation with copy button (lines 531-549, 146-163)
+    - List shows keys with title, status badge, created/expires/last_used dates (lines 403-528)
+    - Revoke button with confirmation dialog (lines 458-488)
+    - Delete button for revoked/expired keys (lines 492-524)
+- Files verified:
+  - apps/frontend/src/app/(dashboard)/settings/api-keys/page.tsx
+  - apps/frontend/src/app/(dashboard)/settings/api-keys/layout.tsx
+  - apps/frontend/src/lib/api/api-keys.ts
+  - backend/core/organizations/org_api_keys_repo.py
+  - backend/core/organizations/org_api_keys_api.py
+- Learnings for future iterations:
+  - API keys use public:secret pair format
+  - Full secret shown only once on creation
+  - Status can be: active, revoked, expired
+  - Revoke = soft delete (status change), Delete = hard delete
+  - Keys have optional expiration (never, 7, 30, 90, 365 days)
+---
