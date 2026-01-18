@@ -4,7 +4,7 @@
  * API functions for managing organization-level API keys with scopes.
  */
 
-import { backendApi } from "./api";
+import { backendApi } from "../api-client";
 
 // Scopes available for organization API keys
 export type OrgApiKeyScope =

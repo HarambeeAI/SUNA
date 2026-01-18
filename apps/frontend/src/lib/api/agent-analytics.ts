@@ -5,7 +5,7 @@
  * Provides functions for fetching agent performance analytics data.
  */
 
-import { backendApi } from './api';
+import { backendApi } from '../api-client';
 
 // Types
 
