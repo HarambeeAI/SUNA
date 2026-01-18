@@ -345,7 +345,7 @@ Worryless AI is a managed SaaS platform built on the open-source Kortix Suna fou
 - [x] User list with ability to suspend/unsuspend accounts
 - [x] System health: API response times, error rates, background job queue length
 - [x] Typecheck passes
-- [ ] Verify changes work in browser
+- [x] Verify changes work in browser
 
 ### US-029: Agent performance monitoring
 **Description:** As an organization admin, I want to see agent performance metrics so I can optimize our workflows.
