@@ -99,6 +99,9 @@ export async function createOrgApiKey(
     `/organizations/${orgId}/api-keys`,
     request
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to create organization API key');
+  }
   return response.data;
 }
 
@@ -111,6 +114,9 @@ export async function listOrgApiKeys(
   const response = await backendApi.get<OrgApiKeyListResponse>(
     `/organizations/${orgId}/api-keys`
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to list organization API keys');
+  }
   return response.data;
 }
 
@@ -124,6 +130,9 @@ export async function getOrgApiKey(
   const response = await backendApi.get<OrgApiKeyResponse>(
     `/organizations/${orgId}/api-keys/${keyId}`
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to get organization API key details');
+  }
   return response.data;
 }
 
@@ -139,6 +148,9 @@ export async function updateOrgApiKey(
     `/organizations/${orgId}/api-keys/${keyId}`,
     request
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to update organization API key');
+  }
   return response.data;
 }
 
@@ -152,6 +164,9 @@ export async function revokeOrgApiKey(
   const response = await backendApi.post<{ message: string }>(
     `/organizations/${orgId}/api-keys/${keyId}/revoke`
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to revoke organization API key');
+  }
   return response.data;
 }
 
@@ -165,6 +180,9 @@ export async function deleteOrgApiKey(
   const response = await backendApi.delete<{ message: string }>(
     `/organizations/${orgId}/api-keys/${keyId}`
   );
+  if (!response.success) {
+    throw response.error || new Error('Failed to delete organization API key');
+  }
   return response.data;
 }
 

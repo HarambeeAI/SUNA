@@ -131,7 +131,11 @@ export async function getAgentAnalyticsDashboard(
   days: number = 30
 ): Promise<AgentAnalyticsDashboard> {
   const query = buildQueryString({ days });
-  return backendApi.get<AgentAnalyticsDashboard>(`/agents/${agentId}/analytics${query}`);
+  const response = await backendApi.get<AgentAnalyticsDashboard>(`/agents/${agentId}/analytics${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch agent analytics dashboard');
+  }
+  return response.data;
 }
 
 /**
@@ -142,7 +146,11 @@ export async function getAgentStats(
   days: number = 30
 ): Promise<AgentPerformanceStats> {
   const query = buildQueryString({ days });
-  return backendApi.get<AgentPerformanceStats>(`/agents/${agentId}/analytics/stats${query}`);
+  const response = await backendApi.get<AgentPerformanceStats>(`/agents/${agentId}/analytics/stats${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch agent stats');
+  }
+  return response.data;
 }
 
 /**
@@ -153,7 +161,11 @@ export async function getAgentRunsTimeline(
   days: number = 30
 ): Promise<AgentRunsTimelineResponse> {
   const query = buildQueryString({ days });
-  return backendApi.get<AgentRunsTimelineResponse>(`/agents/${agentId}/analytics/timeline${query}`);
+  const response = await backendApi.get<AgentRunsTimelineResponse>(`/agents/${agentId}/analytics/timeline${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch agent runs timeline');
+  }
+  return response.data;
 }
 
 /**
@@ -165,7 +177,11 @@ export async function getAgentSlowestTools(
   limit: number = 10
 ): Promise<SlowestToolsResponse> {
   const query = buildQueryString({ days, limit });
-  return backendApi.get<SlowestToolsResponse>(`/agents/${agentId}/analytics/tools${query}`);
+  const response = await backendApi.get<SlowestToolsResponse>(`/agents/${agentId}/analytics/tools${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch slowest tools');
+  }
+  return response.data;
 }
 
 /**
@@ -176,7 +192,11 @@ export async function exportAgentRunLogs(
   days: number = 30
 ): Promise<AgentRunLogsExport> {
   const query = buildQueryString({ days });
-  return backendApi.get<AgentRunLogsExport>(`/agents/${agentId}/analytics/logs/export${query}`);
+  const response = await backendApi.get<AgentRunLogsExport>(`/agents/${agentId}/analytics/logs/export${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to export agent run logs');
+  }
+  return response.data;
 }
 
 /**
@@ -189,7 +209,11 @@ export async function getToolExecutions(
   pageSize: number = 50
 ): Promise<ToolExecutionsResponse> {
   const query = buildQueryString({ days, page, page_size: pageSize });
-  return backendApi.get<ToolExecutionsResponse>(`/agents/${agentId}/analytics/tool-executions${query}`);
+  const response = await backendApi.get<ToolExecutionsResponse>(`/agents/${agentId}/analytics/tool-executions${query}`);
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to fetch tool executions');
+  }
+  return response.data;
 }
 
 /**

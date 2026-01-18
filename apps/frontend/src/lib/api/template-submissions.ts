@@ -83,7 +83,10 @@ export async function createTemplateSubmission(
   request: TemplateSubmissionCreateRequest
 ): Promise<TemplateSubmission> {
   const response = await backendApi.post<TemplateSubmission>('/template-submissions', request);
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to create template submission');
+  }
+  return response.data;
 }
 
 export async function listMySubmissions(params?: {
@@ -95,14 +98,20 @@ export async function listMySubmissions(params?: {
   const response = await backendApi.get<TemplateSubmissionsListResponse>(
     `/template-submissions${queryString}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to list submissions');
+  }
+  return response.data;
 }
 
 export async function getSubmission(submissionId: string): Promise<TemplateSubmission> {
   const response = await backendApi.get<TemplateSubmission>(
     `/template-submissions/${submissionId}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to get submission');
+  }
+  return response.data;
 }
 
 export async function cancelSubmission(
@@ -111,7 +120,10 @@ export async function cancelSubmission(
   const response = await backendApi.delete<{ message: string }>(
     `/template-submissions/${submissionId}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to cancel submission');
+  }
+  return response.data;
 }
 
 // Admin API functions
@@ -125,14 +137,20 @@ export async function listAllSubmissions(params?: {
   const response = await backendApi.get<TemplateSubmissionsListResponse>(
     `/admin/template-submissions${queryString}`
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to list all submissions');
+  }
+  return response.data;
 }
 
 export async function getSubmissionStats(): Promise<TemplateSubmissionStatsResponse> {
   const response = await backendApi.get<TemplateSubmissionStatsResponse>(
     '/admin/template-submissions/stats'
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to get submission stats');
+  }
+  return response.data;
 }
 
 export async function approveSubmission(
@@ -143,7 +161,10 @@ export async function approveSubmission(
     `/admin/template-submissions/${submissionId}/approve`,
     request ?? {}
   );
-  return response;
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to approve submission');
+  }
+  return response.data;
 }
 
 export async function rejectSubmission(
@@ -154,5 +175,8 @@ export async function rejectSubmission(
     `/admin/template-submissions/${submissionId}/reject`,
     request
   );
+  if (!response.success || !response.data) {
+    throw response.error || new Error('Failed to reject submission');
+  }
   return response;
 }

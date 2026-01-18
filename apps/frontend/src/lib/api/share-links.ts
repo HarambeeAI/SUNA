@@ -77,7 +77,10 @@ export async function createShareLink(
   request: ShareLinkCreateRequest = {}
 ): Promise<ShareLink> {
   try {
-    const response = await backendApi.post(`/agents/${agentId}/share-links`, request);
+    const response = await backendApi.post<ShareLink>(`/agents/${agentId}/share-links`, request);
+    if (!response.success || !response.data) {
+      throw response.error || new Error('Failed to create share link');
+    }
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -89,7 +92,10 @@ export async function createShareLink(
  */
 export async function listShareLinks(agentId: string): Promise<ShareLinksListResponse> {
   try {
-    const response = await backendApi.get(`/agents/${agentId}/share-links`);
+    const response = await backendApi.get<ShareLinksListResponse>(`/agents/${agentId}/share-links`);
+    if (!response.success || !response.data) {
+      throw response.error || new Error('Failed to list share links');
+    }
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -101,7 +107,10 @@ export async function listShareLinks(agentId: string): Promise<ShareLinksListRes
  */
 export async function getPublicShareLink(shareId: string): Promise<PublicShareLink> {
   try {
-    const response = await backendApi.get(`/share/${shareId}`);
+    const response = await backendApi.get<PublicShareLink>(`/share/${shareId}`);
+    if (!response.success || !response.data) {
+      throw response.error || new Error('Failed to get public share link');
+    }
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -116,7 +125,10 @@ export async function updateShareLink(
   request: ShareLinkUpdateRequest
 ): Promise<ShareLink> {
   try {
-    const response = await backendApi.patch(`/share-links/${shareId}`, request);
+    const response = await backendApi.patch<ShareLink>(`/share-links/${shareId}`, request);
+    if (!response.success || !response.data) {
+      throw response.error || new Error('Failed to update share link');
+    }
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -128,7 +140,10 @@ export async function updateShareLink(
  */
 export async function deleteShareLink(shareId: string): Promise<void> {
   try {
-    await backendApi.delete(`/share-links/${shareId}`);
+    const response = await backendApi.delete(`/share-links/${shareId}`);
+    if (!response.success) {
+      throw response.error || new Error('Failed to delete share link');
+    }
   } catch (error) {
     throw handleApiError(error);
   }
@@ -139,7 +154,10 @@ export async function deleteShareLink(shareId: string): Promise<void> {
  */
 export async function revokeShareLink(shareId: string): Promise<ShareLink> {
   try {
-    const response = await backendApi.post(`/share-links/${shareId}/revoke`);
+    const response = await backendApi.post<ShareLink>(`/share-links/${shareId}/revoke`);
+    if (!response.success || !response.data) {
+      throw response.error || new Error('Failed to revoke share link');
+    }
     return response.data;
   } catch (error) {
     throw handleApiError(error);
