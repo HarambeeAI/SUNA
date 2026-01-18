@@ -178,5 +178,5 @@ export async function rejectSubmission(
   if (!response.success || !response.data) {
     throw response.error || new Error('Failed to reject submission');
   }
-  return response;
+  return response.data;
 }
