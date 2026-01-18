@@ -110,7 +110,7 @@ interface AgentConfigurationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   agentId: string;
-  initialTab?: 'instructions' | 'tools' | 'integrations' | 'knowledge' | 'triggers';
+  initialTab?: 'instructions' | 'tools' | 'integrations' | 'knowledge' | 'triggers' | 'settings';
   onAgentChange?: (agentId: string) => void;
 }
 
