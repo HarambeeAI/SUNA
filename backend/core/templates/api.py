@@ -116,6 +116,18 @@ class TemplateResponse(BaseModel):
     usage_examples: Optional[List[UsageExampleMessage]] = None
     config: Optional[Dict[str, Any]] = None
 
+class MarketplacePaginationInfo(BaseModel):
+    current_page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
+
+class MarketplaceTemplatesResponse(BaseModel):
+    templates: List[TemplateResponse]
+    pagination: MarketplacePaginationInfo
+
 class InstallationResponse(BaseModel):
     status: str
     instance_id: Optional[str] = None
@@ -718,20 +730,6 @@ async def install_template(
         logger.error(f"Error installing template {request.template_id}: {error_str}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
-from core.utils.pagination import PaginationParams
-
-class MarketplacePaginationInfo(BaseModel):
-    current_page: int
-    page_size: int
-    total_items: int
-    total_pages: int
-    has_next: bool
-    has_previous: bool
-
-class MarketplaceTemplatesResponse(BaseModel):
-    templates: List[TemplateResponse]
-    pagination: MarketplacePaginationInfo
 
 @router.get("/kortix-all", response_model=MarketplaceTemplatesResponse)
 async def get_all_kortix_templates(
