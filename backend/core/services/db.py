@@ -487,6 +487,11 @@ async def execute(sql: str, params: Optional[dict] = None) -> List[dict]:
         return [dict(row._mapping) for row in result.fetchall()]
 
 
+async def execute_all(sql: str, params: Optional[dict] = None) -> List[dict]:
+    """Alias for execute() - returns all rows from query."""
+    return await execute(sql, params)
+
+
 async def execute_read(sql: str, params: Optional[dict] = None) -> List[dict]:
     """Execute read-only query on read replica (if configured) or primary."""
     async with get_read_session() as session:
